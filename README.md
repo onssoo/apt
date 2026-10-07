@@ -104,6 +104,8 @@ reports/  质检报告，不入 git
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 产品设计：功能规格、学习算法、内容规范、风险登记册 |
 | [`docs/CONTRACT.md`](docs/CONTRACT.md) | 实施契约：数据格式、接口、部署流程、验收清单 |
 | [`docs/TASKS.md`](docs/TASKS.md) | 开工任务书：里程碑 M0–M7、硬规则、默认决策 |
+| [`docs/CONTENT_PROMPT.md`](docs/CONTENT_PROMPT.md) | 新批次课文的生成提示词模板（填主题/级别/篇数，交给强模型出 JSON） |
+| [`docs/acceptance.md`](docs/acceptance.md) | 验收记录：已自动验证的项 + iPhone 真机点验清单 |
 | [`AGENTS.md`](AGENTS.md) | 给 coding agent 的硬规则摘要 |
 
 ## 内容版权

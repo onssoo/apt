@@ -141,7 +141,7 @@
 | **腾讯云 VPS** `VM-0-4-ubuntu` | `100.64.0.3` | 公网 `203.0.113.10` | AMD EPYC 7K62 **2 vCPU / 1.9 GiB** / 40 GB，Ubuntu 24.04，**时区 Asia/Shanghai** | **线上宿主**。跑 Caddy + lababa(PWA) + PostgreSQL + apt-tts 代理 |
 | **Mac mini M2** `DLs-Mac-mini-m2` | `100.64.0.2` | `192.168.0.45` | Apple M2 8 核 / **16 GB**，macOS 27.0.1 | **内容工厂**。跑 Audio 合成、Whisper 质检、rsync 发布。已有 lisa/embed/rerank/docreader/documd/OrbStack |
 | **Mac mini 2014** `dail-Macmini` | `100.64.0.1` | `192.168.0.125` | Intel / **8 GB**（可用 4.1），Linux Mint 22.3 | **Gitea 宿主**。⚠️ **不要在这台上跑本项目的任何计算任务** |
-| **DGX Spark** | `100.89.119.47` | `192.168.0.69` | GB10 / 128 GB | 不用。⚠️ 它是 LLM 试验田，**不放** |
+| **DGX Spark** | `100.64.0.4` | `192.168.0.69` | GB10 / 128 GB | 不用。⚠️ 它是 LLM 试验田，**不放** |
 
 **关键推论**：
 

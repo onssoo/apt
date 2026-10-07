@@ -96,3 +96,30 @@ python3 -m http.server 8000 -d site
 - 本项目 region = `eastus`，pt-PT 声音：`RaquelNeural`（主）、`DuarteNeural`（对话第二角色）、`FernandaNeural`（备选）
 - 额度：每月 50 万字符。首批 8 课约 1 万字符。脚本打印本次消耗字符数用于对账。
 - 密钥只在 `.env`（Mac mini，已 gitignore）与 `/etc/apt-tts.env`（VPS，600 root）。
+
+## 两个远端：私有真源 与 公开镜像
+
+| 远端 | 地址 | 内容 |
+|---|---|---|
+| **origin（真源，私有）** | Gitea `dailei/apt` | **保留真实域名与部署信息**。日常提交推这里 |
+| **公开镜像** | `git@github.com:onssoo/apt.git` | **脱敏版**：`apt.example.com` → `apt.example.com`。这是**另一条历史**，不是 origin 的分支 |
+
+公开镜像不是简单的 `git push`，**每次同步都必须重新脱敏**，否则真实域名会进公开仓：
+
+```bash
+git fetch github main
+git checkout -b gh-snapshot github/main
+git read-tree -u --reset main            # 让树 = 当前主线，HEAD 仍是镜像的 commit
+# 重新脱敏（这几处是历次漏掉过的）
+sed -i '' 's/apt\.lababa\.live/apt.example.com/g' \
+    server/apt-tts.service server/caddy-apt.conf.example AGENTS.md tools/test_render.mjs docs/acceptance.md
+git grep -nE "apt\.lababa\.live|43\.156\.226\.7|100\.(85|89|76)\." && echo "还有真实信息，别推"
+sh tools/check_secrets.sh
+git add -A && git commit -m "chore: 公开版快照（<改了什么>后重新脱敏）"
+git push git@github.com:onssoo/apt.git gh-snapshot:main   # 必须是快进，不要 force push
+git checkout main && git branch -D gh-snapshot
+```
+
+⚠️ **必须走 SSH**。HTTPS（`https://github.com/onssoo/apt.git`）的钥匙串凭据已失效，
+会报 `Invalid username or token`。`git fetch` 走 HTTPS 能成功只是因为公开仓拉取不需要认证，
+别被它误导。
