@@ -102,7 +102,7 @@ python3 -m http.server 8000 -d site
 | 远端 | 地址 | 内容 |
 |---|---|---|
 | **origin（真源，私有）** | Gitea `dailei/apt` | **保留真实域名与部署信息**。日常提交推这里 |
-| **公开镜像** | `git@github.com:onssoo/apt.git` | **脱敏版**：`apt.example.com` → `apt.example.com`。这是**另一条历史**，不是 origin 的分支 |
+| **公开镜像** | `git@github.com:onssoo/apt.git` | **脱敏版**：真实域名一律写成 `apt.example.com`，内网地址用 `100.64.0.x` / `192.168.0.x` 占位。这是**另一条历史**，不是 origin 的分支 |
 
 公开镜像不是简单的 `git push`，**每次同步都必须重新脱敏**，否则真实域名会进公开仓：
 

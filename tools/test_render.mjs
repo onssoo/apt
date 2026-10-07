@@ -51,9 +51,14 @@ await new Promise(res => ws.addEventListener('open', res));
 let id = 0;
 const pending = new Map();
 const events = [];
+const pageErrors = [];   // 页面运行时异常（onclick 里 ReferenceError 之类）
+function clearErrors() { pageErrors.length = 0; }
 ws.addEventListener('message', ev => {
   const m = JSON.parse(ev.data);
   if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+  else if (m.method === 'Runtime.exceptionThrown') {
+    pageErrors.push((m.params.exceptionDetails?.exception?.description || '').split('\n')[0]);
+  }
   else if (m.method === 'Page.javascriptDialogOpening') {
     // 页面里的 alert/confirm 在无头模式下没人点，会永久阻塞渲染进程
     ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: true } }));
@@ -259,6 +264,200 @@ const calHead = await evaluate(`(document.querySelector('#stats .cal')||{}).text
 check('日历从周一开始', calHead.startsWith('一二三四五六日'), calHead.slice(0, 10));
 check('设置页有「高级」折叠区', /高级/.test(calTxt), '');
 check('备份单独一张卡并写明上次导出', /数据备份/.test(calTxt) && /上次导出|从未导出/.test(calTxt), '');
+
+
+// ---------- 场景 10：真实点按（不是直接调内部函数） ----------
+// 教训：这个脚本原来用 evaluate(`openL('L01')`) 直接调函数，于是
+// 「课文卡片的 onclick 被引号截断、点了没反应」这种 bug 一路漏到线上。
+// 凡是用户用手点的，测试也必须用手点。
+
+await evaluate(`localStorage.clear()`);
+await goto(URL_);
+await evaluate(`show('read')`);
+await sleep(600);
+
+const cardN = await evaluate(`document.querySelectorAll('#read .card').length`);
+check('阅读页列出课文卡片', cardN >= 8, `${cardN} 张`);
+
+// 真·点击第一张卡片
+await evaluate(`document.querySelector('#read .card').click()`);
+await sleep(1000);
+const openedId = await evaluate(`(typeof curL !== 'undefined' && curL) ? curL.id : '(没打开)'`);
+check('点课文卡片能打开课文', openedId !== '(没打开)', `curL = ${openedId}`);
+const lessonTxt = await evaluate(`document.getElementById('read').innerText`);
+check('课文页显示原文', /Chamo-me Mei/.test(lessonTxt), lessonTxt.slice(0, 70).replace(/\n/g, '|'));
+check('课文页有朗读按钮', /朗读全文/.test(lessonTxt), '');
+check('课文页有模式切换（阅读/跟读/听写）', /阅读/.test(lessonTxt) && /跟读/.test(lessonTxt) && /听写/.test(lessonTxt), '');
+
+// ---------- 场景 11：全站 onclick 处理器语法有效 ----------
+// 引号被截断的 onclick 不会报「页面错误」，只会静默点不动。
+// 这条检查扫每个 tab 上的所有 onclick，逐条用 new Function 试语法。
+const invalid = [];
+for (const t of ['today', 'read', 'words', 'review', 'stats']) {
+  await evaluate(`show('${t}')`);
+  await sleep(350);
+  const bad = await evaluate(`(function(){
+    const out = [];
+    document.querySelectorAll('[onclick]').forEach(el => {
+      const src = el.getAttribute('onclick');
+      if (src == null) return;
+      try { new Function(src); } catch (e) { out.push(el.tagName + ' → ' + src.slice(0, 60)); }
+    });
+    return out;
+  })()`);
+  (bad || []).forEach(b => invalid.push(`#${t} ${b}`));
+}
+check('所有 tab 的 onclick 处理器语法有效', invalid.length === 0,
+  invalid.slice(0, 4).join(' ｜ '));
+
+// 单词页的 ▶ 与 删 是真按钮，点一下确认没坏
+await evaluate(`show('words')`);
+await sleep(400);
+await evaluate(`(function(){
+  if (!D.words.some(w => w.pt === '__测试词__')) {
+    D.words.push({ id: 'rt1', pt: '__测试词__', en: 'probe', zh: '探针', ex: '', a: '',
+                   box: 0, lapse: 0, due: today(), added: today(), upd: Date.now() });
+    save();
+  }
+  wFilter = 'all'; listWords();
+})()`);
+await sleep(400);
+const hasWord = await evaluate(`document.getElementById('words').innerText.includes('__测试词__')`);
+check('单词页能列出词条', hasWord, '');
+const delClicked = await evaluate(`(function(){
+  const btns = [...document.querySelectorAll('#words button')].filter(b => (b.getAttribute('onclick')||'').startsWith('delWord('));
+  if (!btns.length) return 'no-del-button';
+  btns[0].click();
+  return 'clicked';
+})()`);
+await sleep(500);
+check('单词页「删」按钮点得动（且真的删掉）',
+  delClicked === 'clicked' && !(await evaluate(`document.getElementById('words').innerText.includes('__测试词__')`)),
+  delClicked);
+
+
+// ---------- 场景 12：生词区（▶ 发音 / ＋ 加入 / 全部加入） ----------
+//
+// 教训：onclick 语法合法 ≠ 点得动。`playWord({a:curL.wa[i]})` 语法完全合法，
+// 但 i 是 map 的渲染期变量、没插值进字符串，一点就 ReferenceError。
+// 所以这里全部走**真实点按**，并且每项都在干净状态上跑（否则互相干扰：
+// 点过 ＋ 之后就没有 ＋ 可点了）。
+// 判据是 CDP 的 Runtime.exceptionThrown —— 事件处理函数里抛的异常不会让
+// click() 本身抛，只会变成未捕获异常。
+
+// 回到「干净状态 + 打开 L01 的课文页」
+async function freshLesson() {
+  await evaluate(`localStorage.clear()`);
+  await goto(URL_);
+  await evaluate(`openL('L01')`);
+  await waitFor("document.querySelector('#read .trb')", 10000);
+  await sleep(300);
+}
+const wordBtn = sel => `(function(){
+  const c = [...document.querySelectorAll('#read .card')].find(x => x.innerText.startsWith('生词'));
+  if (!c) return 'no-card';
+  const b = [...c.querySelectorAll('button')].find(x => x.innerText.trim() === '${sel}');
+  if (!b) return 'no-button';
+  b.click(); return 'clicked';
+})()`;
+
+// 12a) 生词 ▶：设上音频，且不抛异常
+await freshLesson();
+clearErrors();
+const playRes = await evaluate(wordBtn('▶'));
+await sleep(1200);
+const auSrc = await evaluate(`document.getElementById('au').src`);
+check('生词 ▶ 点得动且真的设上音频', playRes === 'clicked' && /\/audio\/.+\.mp3$/.test(String(auSrc)),
+  `${playRes}, src=${auSrc}`);
+check('点生词 ▶ 不抛未处理异常', pageErrors.length === 0, pageErrors.slice(0, 2).join(' ｜ '));
+
+// 12b) 生词 ＋：词库 +1
+await freshLesson();
+clearErrors();
+const n0 = await evaluate(`D.words.length`);
+const addRes = await evaluate(wordBtn('＋'));
+await sleep(600);
+const n1 = await evaluate(`D.words.length`);
+check('生词 ＋ 点得动且加进单词本', addRes === 'clicked' && n1 === n0 + 1,
+  `${addRes}, 词库 ${n0} → ${n1}`);
+check('点生词 ＋ 不抛未处理异常', pageErrors.length === 0, pageErrors.slice(0, 2).join(' ｜ '));
+
+// 12c) 全部加入单词本
+await freshLesson();
+clearErrors();
+await evaluate(`(function(){
+  const c = [...document.querySelectorAll('#read .card')].find(x => x.innerText.startsWith('生词'));
+  const b = c && [...c.querySelectorAll('button')].find(x => x.innerText.includes('全部加入'));
+  if (b) b.click();
+})()`);
+await sleep(900);
+const n2 = await evaluate(`D.words.length`);
+const total = await evaluate(`curL.words.length`);
+check('「全部加入单词本」把本课生词都加进去', n2 === total, `${n2} / ${total}`);
+check('批量加入不抛未处理异常', pageErrors.length === 0, pageErrors.slice(0, 2).join(' ｜ '));
+
+// 12d) 生词区每个按钮都点一遍，断言没有未处理异常（放最后，状态已经被改过也无所谓）
+await freshLesson();
+clearErrors();
+const wordBtnN = await evaluate(`document.querySelectorAll('#read .w button').length`);
+for (let bi = 0; bi < wordBtnN; bi++) {
+  await evaluate(`(function(){ const b = document.querySelectorAll('#read .w button')[${bi}]; if (b) b.click(); })()`);
+  await sleep(40);
+}
+await sleep(400);
+check('生词区按钮数量合理（护栏）', wordBtnN >= 20, `只找到 ${wordBtnN} 个按钮`);
+check('生词区每个按钮点下去都不抛未处理异常', pageErrors.length === 0,
+  pageErrors.slice(0, 3).join(' ｜ '));
+
+// ---------- 场景 13：全站交互扫描 ----------
+//
+// 「好好检查」的落地：不只是修一个报一个，而是把每个 tab 上**所有带 onclick 的
+// 元素都真点一遍**，看有没有别的 handler 也在抛未处理异常。
+// 跳过会触发下载或导航的（在无头环境里会把页面上下文弄没）：
+const SWEEP_SKIP = /dlOne|dlAll|doExport|location|reload/;
+
+async function sweep(container, label, tabName, setup) {
+  if (tabName) { await evaluate(`show('${tabName}')`); await sleep(400); }  // tab 是懒渲染的，必须先切过去
+  if (setup) { await setup(); }
+  const handlers = await evaluate(
+    `[...document.querySelectorAll('${container} [onclick]')].map(e => e.getAttribute('onclick'))`);
+  clearErrors();
+  let clickedN = 0;
+  for (const h of (handlers || [])) {
+    if (!h || SWEEP_SKIP.test(h)) continue;
+    await evaluate(`(function(){
+      const e = [...document.querySelectorAll('${container} [onclick]')]
+        .find(x => x.getAttribute('onclick') === ${JSON.stringify(h)});
+      if (e) e.click();
+    })()`);
+    clickedN++;
+    await sleep(35);
+  }
+  await sleep(300);
+  // 判据：扫描到的 handler 至少 1 个（说明这个 tab 真渲染了，不是空转），
+  // 且点过的每一个都没抛未处理异常。clickedN 可以是 0 —— 比如统计页只有
+  // 「导出备份」，而它属于故意跳过的下载类。
+  const skipped = (handlers || []).length - clickedN;
+  check(`${label}：可点元素 ${clickedN} 个全点过（跳过下载类 ${skipped} 个），无未处理异常`,
+    pageErrors.length === 0 && (handlers || []).length >= 1,
+    `扫到 ${(handlers || []).length} 个 / 点了 ${clickedN} 个；${pageErrors.slice(0, 3).join(' ｜ ')}`);
+}
+
+await evaluate(`localStorage.clear()`);
+await goto(URL_);
+await sweep('#today', '今日页', 'today');
+await sweep('#read', '阅读页（课文列表）', 'read');
+await sweep('#read', '阅读页（课文内）', 'read', async () => {
+  await evaluate(`openL('L01')`);
+  await waitFor("document.querySelector('#read .trb')", 10000);
+  await sleep(300);
+});
+await sweep('#read', '阅读页（跟读模式）', 'read', async () => { await evaluate(`setMode('shadow')`); await sleep(400); });
+await sweep('#read', '阅读页（听写模式）', 'read', async () => { await evaluate(`setMode('dict')`); await sleep(400); });
+await sweep('#words', '单词页', 'words');
+await sweep('#words', '单词页（总记不住的词）', 'words', async () => { await evaluate(`wFilter='hard'; listWords()`); await sleep(300); });
+await sweep('#review', '复习页', 'review');
+await sweep('#stats', '统计页', 'stats');
 
 // ---------- 汇总 ----------
 console.log('\n=== 无头 Chrome 渲染验证 ===');

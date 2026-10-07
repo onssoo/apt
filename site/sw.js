@@ -5,7 +5,9 @@
  *   ⚠️ ignoreSearch 只用于页面类资源。/api/tts 的查询串就是文本本身，
  *    忽略它会导致所有单词播同一段音频 —— 绝对不能这样做。
  */
-const C = 'apt-cache-v3';   // v3：M7 质量修复（内容改 v2、逐句译文改点按、页面改版）
+const C = 'apt-cache-v5';   // v5：修复「生词 ▶ 点不动」（onclick 里的 i 没被插值）
+                            // v4：修复「课文卡片点不开」（jid 引号截断 onclick）
+                            // v3：M7 质量修复（内容改 v2、逐句译文改点按、页面改版）
                             // v2：清掉可能存了 206 局部响应的旧缓存
 const FILES = ['./', './index.html', './logic.js', './sw.js', './manifest.json', './materials.json', './icon.png'];
 

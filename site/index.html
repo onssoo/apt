@@ -178,8 +178,14 @@ function esc(s) {
   return (s == null ? '' : String(s)).replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-// 渲染 id 到 onclick：加引号并转义（M2-6）
-const jid = id => JSON.stringify(String(id));
+// 渲染 id 到 onclick：加引号并转义（M2-6）。
+//
+// ⚠️ 必须把双引号转成 &quot;。这个值会被插进**双引号属性**里：
+//     onclick="openL(${jid(id)})"
+// JSON.stringify 产出的是 "L01"（带双引号），直接插进去会把属性提前截断，
+// 浏览器只拿到 onclick="openL("，点下去毫无反应、也不报错。
+// 症状就是「阅读页点课文没反应、单词页 ▶ 和 删 都点不动」。
+const jid = id => JSON.stringify(String(id)).replace(/"/g, '&quot;');
 
 function toast(msg, ms) {
   const t = $('toast');
@@ -595,7 +601,7 @@ function vRead(l, S) {
       const nw = L.normWord(w);
       return `<div class="w"><div class="row">
         <b style="font-size:18px">${esc(nw.pt)}</b>${ffHtml(nw)}
-        <span><button class="g sm" onclick="event.stopPropagation();playWord({pt:'',a:curL.wa&&curL.wa[i]})">▶</button>
+        <span><button class="g sm" onclick="event.stopPropagation();playLW(${i})">▶</button>
         ${has(nw.pt) ? '<span class="mu">已加入</span>' : `<button class="sm" onclick="event.stopPropagation();addLW(${i})">＋</button>`}</span>
       </div>${glossHtml(nw)}${ffNote(nw)}${nw.ex ? `<div class="ex">${esc(nw.ex)}</div>` : ''}</div>`;
     }).join('')}</div>
@@ -655,6 +661,14 @@ function toggleTrAll() {
 function toggleTr(i) {
   if (trOpen.has(i)) trOpen.delete(i); else trOpen.add(i);
   rRead();
+}
+/** 生词表里点 ▶：按**下标**取这个词的音频。
+ *  以前写成 onclick="playWord({a:curL.wa[i]})" —— i 是 map 的渲染期变量，
+ *  没有插值进字符串，浏览器里点的时候 i 根本不存在（ReferenceError，按钮点不动）。 */
+function playLW(i) {
+  if (!curL) return;
+  const nw = L.normWord((curL.words || [])[i]);
+  playWord({ pt: nw.pt, a: curL.wa && curL.wa[i] });
 }
 function addLW(i) {
   const nw = L.normWord(curL.words[i]);
