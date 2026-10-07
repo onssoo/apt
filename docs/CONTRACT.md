@@ -7,13 +7,13 @@
 | 日期 | 2026-10-07 |
 | 作者 | Dr. Dai Lei |
 | 关联文档 | DESIGN.md（产品设计说明书）、TASKS.md（开工任务书），本文件为其技术落地契约 |
-| 部署目标 | 腾讯云轻量 VPS（`43.156.226.7` / tailnet `100.76.100.59`，Ubuntu 24.04，**2 vCPU / 1.9 GiB**），子域名 `apt.lababa.live` |
+| 部署目标 | 腾讯云轻量 VPS（`203.0.113.10` / tailnet `100.64.0.3`，Ubuntu 24.04，**2 vCPU / 1.9 GiB**），子域名 `apt.example.com` |
 | 反向代理 | **Caddy v2.11.4**（不是 nginx），systemd `caddy.service`，管理口 `127.0.0.1:2019` |
-| 代码托管 | Gitea @ `http://100.85.211.15:3001`，用户 `dailei`，仓库 `dailei/apt`（待建） |
-| 内容工厂 | **Mac mini M2**（`100.89.60.63`，macOS 27.0.1，16 GB，mlx-audio 可用），用户 `dail` |
+| 代码托管 | Gitea @ `http://100.64.0.1:3001`，用户 `yourname`，仓库 `yourname/apt`（待建） |
+| 内容工厂 | **Mac mini M2**（`100.64.0.2`，macOS 27.0.1，16 GB，mlx-audio 可用），用户 `dail` |
 | 客户端 | iPhone / iPad，Safari 添加到主屏幕 |
 | 当前状态 | Azure 密钥已取得，尚未部署上线 |
-| 基础设施真值源 | `~/router`（Gitea 100.85.211.15:3001）。机队与域名事实以 `FLEET.md`、`machines/tencent-vps.md`、`machines/mac-mini-m2.md`、`docs/domains.md` 为准 |
+| 基础设施真值源 | `~/router`（Gitea 100.64.0.1:3001）。机队与域名事实以 `FLEET.md`、`machines/tencent-vps.md`、`machines/mac-mini-m2.md`、`docs/domains.md` 为准 |
 | 保密级别 | 内部使用。密钥仅存放于两台机器的受限文件中，任何前端产物不得包含凭据 |
 
 ---
@@ -132,16 +132,16 @@
 
 ## 3. 既有基础设施约束（v1.2 新增，必读）
 
-> 本章由 `~/router` 核出。**coder 动手前必须先读这一章**，否则会按通用 VPS 假设做错。事实源为 Gitea `100.85.211.15:3001` 的机队仓库，已于 2026-10-07 实测核对。
+> 本章由 `~/router` 核出。**coder 动手前必须先读这一章**，否则会按通用 VPS 假设做错。事实源为 Gitea `100.64.0.1:3001` 的机队仓库，已于 2026-10-07 实测核对。
 
 ### 3.0 机队相关机器的真实规格
 
 | 机器 | Tailscale | 局域网 | 规格 | 与本项目的关系 |
 |---|---|---|---|---|
-| **腾讯云 VPS** `VM-0-4-ubuntu` | `100.76.100.59` | 公网 `43.156.226.7` | AMD EPYC 7K62 **2 vCPU / 1.9 GiB** / 40 GB，Ubuntu 24.04，**时区 Asia/Shanghai** | **线上宿主**。跑 Caddy + lababa(PWA) + PostgreSQL + apt-tts 代理 |
-| **Mac mini M2** `DLs-Mac-mini-m2` | `100.89.60.63` | `192.168.88.45` | Apple M2 8 核 / **16 GB**，macOS 27.0.1 | **内容工厂**。跑 Audio 合成、Whisper 质检、rsync 发布。已有 lisa/embed/rerank/docreader/documd/OrbStack |
-| **Mac mini 2014** `dail-Macmini` | `100.85.211.15` | `192.168.88.125` | Intel / **8 GB**（可用 4.1），Linux Mint 22.3 | **Gitea 宿主**。⚠️ **不要在这台上跑本项目的任何计算任务** |
-| **DGX Spark** | `100.89.119.47` | `192.168.88.69` | GB10 / 128 GB | 不用。⚠️ 它是 LLM 试验田，**不放** |
+| **腾讯云 VPS** `VM-0-4-ubuntu` | `100.64.0.3` | 公网 `203.0.113.10` | AMD EPYC 7K62 **2 vCPU / 1.9 GiB** / 40 GB，Ubuntu 24.04，**时区 Asia/Shanghai** | **线上宿主**。跑 Caddy + lababa(PWA) + PostgreSQL + apt-tts 代理 |
+| **Mac mini M2** `DLs-Mac-mini-m2` | `100.64.0.2` | `192.168.0.45` | Apple M2 8 核 / **16 GB**，macOS 27.0.1 | **内容工厂**。跑 Audio 合成、Whisper 质检、rsync 发布。已有 lisa/embed/rerank/docreader/documd/OrbStack |
+| **Mac mini 2014** `dail-Macmini` | `100.64.0.1` | `192.168.0.125` | Intel / **8 GB**（可用 4.1），Linux Mint 22.3 | **Gitea 宿主**。⚠️ **不要在这台上跑本项目的任何计算任务** |
+| **DGX Spark** | `100.89.119.47` | `192.168.0.69` | GB10 / 128 GB | 不用。⚠️ 它是 LLM 试验田，**不放** |
 
 **关键推论**：
 
@@ -168,8 +168,8 @@ VPS 上已有服务，本项目不得干扰：
 | 既有服务 | 端口/位置 | 共存要求 |
 |---|---|---|
 | Caddy | `:80` / `:443`，管理口 `127.0.0.1:2019` | **共用同一份 `/etc/caddy/Caddyfile`**。只追加站点块，不动lababa 块。改前必须备份 |
-| lababa PWA | systemd，反代 `127.0.0.1:8080` | 不动。`apt.lababa.live` 是独立站点块，天然隔离 |
-| lababa 反代规则 | Caddy 内 `/api/*` → `127.0.0.1:8080` | **注意**：lababa 已有 `/api/*` 规则，但那是它自己站点块内的，apt 的 `apt.lababa.live` 块内 `/api/*` → `127.0.0.1:8787`，两者互不干扰 |
+| lababa PWA | systemd，反代 `127.0.0.1:8080` | 不动。`apt.example.com` 是独立站点块，天然隔离 |
+| lababa 反代规则 | Caddy 内 `/api/*` → `127.0.0.1:8080` | **注意**：lababa 已有 `/api/*` 规则，但那是它自己站点块内的，apt 的 `apt.example.com` 块内 `/api/*` → `127.0.0.1:8787`，两者互不干扰 |
 | PostgreSQL | `:5432` | 本项目首版**不用数据库**（数据在学生设备本地），不碰 |
 | 云镜（YunJing） | 每 30 min 跑 | 会按来源 IP 封 22 端口。部署时走 **2222** |
 
@@ -184,8 +184,8 @@ VPS 上已有服务，本项目不得干扰：
 | 位置 | 值 | 说明 |
 |---|---|---|
 | 站名 / App 主屏名 | **APT** | 主屏图标下显示的名字。全部大写，葡语与英语同为 APT |
-| 仓库名 | **`dailei/apt`** | Gitea 私有仓 |
-| 域名 | **`apt.lababa.live`** | 泛解析已覆盖，无需 A 记录 |
+| 仓库名 | **`yourname/apt`** | Gitea 私有仓 |
+| 域名 | **`apt.example.com`** | 泛解析已覆盖，无需 A 记录 |
 | VPS 静态根目录 | `/var/www/apt` | |
 | 代理服务名 | `apt-tts` | systemd unit、env 文件、StateDirectory 全部用此名 |
 | 代理环境文件 | `/etc/apt-tts.env` | 权限 600 |
@@ -199,13 +199,13 @@ VPS 上已有服务，本项目不得干扰：
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 主域 | `lababa.live` | 已被 lababa 占用，本项目不碰 |
-| 应用子域 | **`apt.lababa.live`** | 本项目专用 |
-| DNS 泛解析 | `@` / `www` / `*` 三条 A 均 → `43.156.226.7`，TTL 600 | **`apt.lababa.live` 自动生效，无需添加 A 记录** |
+| 主域 | `example.com` | 已被 lababa 占用，本项目不碰 |
+| 应用子域 | **`apt.example.com`** | 本项目专用 |
+| DNS 泛解析 | `@` / `www` / `*` 三条 A 均 → `203.0.113.10`，TTL 600 | **`apt.example.com` 自动生效，无需添加 A 记录** |
 | 证书 | Caddy 自动签发与续期 | 不需要 certbot |
 | 根路径部署 | 是 | 应用位于子域根目录，避免路径前缀带来的相对路径问题 |
 
-**前置条件**：只需泛解析生效（已生效）。若将来有人把泛解析删掉改用精确 A 记录，则必须重新加一条指向 `43.156.226.7` 的 A 记录，否则 Caddy 签不出证书。
+**前置条件**：只需泛解析生效（已生效）。若将来有人把泛解析删掉改用精确 A 记录，则必须重新加一条指向 `203.0.113.10` 的 A 记录，否则 Caddy 签不出证书。
 
 ### 4.3 TLS 要求
 
@@ -763,40 +763,40 @@ VPS 上已有服务，本项目不得干扰：
 | 已跑应用 | `lababa.service`（Node，`127.0.0.1:8080`）+ PostgreSQL + Caddy，实测 used ~483 MB | 同上 |
 | 可用内存 | 约 1.5 GiB。**不得在这台跑模型、构建或 Whisper 转写** | 同上 |
 | 证书 | Caddy 自动签发与续期，**不需要 certbot** | 同上 |
-| Caddy 配置真源 | Gitea `dailei/lababa` 仓库 `deploy/Caddyfile`（线上快照） | 实测拉取 |
-| 已有域名 | `lababa.live`、`www.lababa.live`（根域已被 lababa 占用） | `docs/domains.md` |
-| DNS 泛解析 | `@` / `www` / `*` 三条 A 均 → `43.156.226.7`，TTL 600 | `docs/domains.md` |
-| SSH | `ssh -p 2222 -i credentials/keys/tencent-vps/remotessh.pem ubuntu@43.156.226.7`（公网 2222 首选）；走 tailnet 用 `ubuntu@100.76.100.59` | `machines/tencent-vps.md` |
+| Caddy 配置真源 | Gitea `yourname/lababa` 仓库 `deploy/Caddyfile`（线上快照） | 实测拉取 |
+| 已有域名 | `example.com`、`www.example.com`（根域已被 lababa 占用） | `docs/domains.md` |
+| DNS 泛解析 | `@` / `www` / `*` 三条 A 均 → `203.0.113.10`，TTL 600 | `docs/domains.md` |
+| SSH | `ssh -p 2222 -i credentials/keys/tencent-vps/remotessh.pem ubuntu@203.0.113.10`（公网 2222 首选）；走 tailnet 用 `ubuntu@100.64.0.3` | `machines/tencent-vps.md` |
 | 安全 | **低信任主机**，按机队规矩不持有任何机队凭据 | `rules/owner-rules.md` 信任边界 |
 
 **三个必须注意的差异（与原文档 v1.0 的偏差）**：
 
 1. **不装 nginx，不跑 certbot。** 线上是 Caddy，自动 HTTPS。装 nginx 会抢占 80/443 端口并打乱现有站点。
-2. **不需要 A 记录。** `lababa.live` 已配泛解析 `*`，`apt.lababa.live` 自动解析到同一 IP。只需在 Caddyfile 里加一个站点块。
+2. **不需要 A 记录。** `example.com` 已配泛解析 `*`，`apt.example.com` 自动解析到同一 IP。只需在 Caddyfile 里加一个站点块。
 3. **不要用 `--delete`。** VPS 上还跑着 lababa 与 PostgreSQL，`rsync --delete` 配错路径会删掉它们。
 
 **部署步骤**：
 
 | 步骤 | 动作 | 注意 |
 |---|---|---|
-| 1 建仓 | 在 Gitea 建 `dailei/apt`（**private**），按 `REPO-MAP.md` 登记流程加一行 | 仓库必须 private。参照 lababa 是 public导致过凭据风险，本项目含Azure 密钥相关配置，绝不能public |
+| 1 建仓 | 在 Gitea 建 `yourname/apt`（**private**），按 `REPO-MAP.md` 登记流程加一行 | 仓库必须 private。参照 lababa 是 public导致过凭据风险，本项目含Azure 密钥相关配置，绝不能public |
 | 2 克隆到 M2 | M2 上 `git clone` 到 `~/apt` | M2 的 Gitea **SSH key 未授权**（见 `machines/mac-mini-m2.md`），走 HTTPS + token，或先补 SSH key |
 | 3 目录就位 | 按 9.1 建 `site/` `tools/` `server/` `docs/` | 脚本一律不进 `site/` |
 | 4 本地验证 | `python3 -m http.server -d site 8000` | 五页可开即可 |
 | 5 生成音频 | `python3 tools/build_audio.py` | 幂等；密钥从 M2 的 `.env` 读|
-| 6 上传静态物 | `rsync -av site/ ubuntu@43.156.226.7:/home/ubuntu/pt/`（**不带 `--delete`**） | 先只传除 `audio/` 外的一切 |
+| 6 上传静态物 | `rsync -av site/ ubuntu@203.0.113.10:/home/ubuntu/pt/`（**不带 `--delete`**） | 先只传除 `audio/` 外的一切 |
 | 7 建 VPS 目录 | `sudo mkdir -p /home/ubuntu/pt` 并 `chown ubuntu` | |
 | 8 部署代理 | 放 `/opt/apt-tts/tts_proxy.py` + `/etc/apt-tts.env`（600）+ unit（见 15.2） | 先 `curl` 本地接口自测 |
-| 9 改 Caddyfile | 备份后加 `apt.lababa.live` 站点块（见下方样例） | **只加站点块，不动lababa 那个块** |
+| 9 改 Caddyfile | 备份后加 `apt.example.com` 站点块（见下方样例） | **只加站点块，不动lababa 那个块** |
 | 10 校验重载 | `caddy validate --config /etc/caddy/Caddyfile` → `systemctl reload caddy` | 校验失败绝不 reload |
-| 11 上传音频 | `rsync -av site/audio/ ubuntu@43.156.226.7:/home/ubuntu/pt/audio/` | 体积大，分批 |
+| 11 上传音频 | `rsync -av site/audio/ ubuntu@203.0.113.10:/home/ubuntu/pt/audio/` | 体积大，分批 |
 | 12 验收 | 跑 16.1 的 I1–I10 | |
 
 **Caddyfile 新增块**（追加到现有 `/etc/caddy/Caddyfile`，lababa 块不动）：
 
 ```caddy
 # apt：葡语学习打卡 PWA（追加块，不改动 lababa 块）
-apt.lababa.live {
+apt.example.com {
 	encode zstd gzip
 
 	root * /home/ubuntu/pt
@@ -859,7 +859,7 @@ apt.lababa.live {
 Mac mini: 编辑 materials.json
         → build_audio.py（幂等，合成新增音频）
         → qa_audio.py（质检差异清单）
-        → rsync -av site/ user@apt.lababa.live:/var/www/apt/
+        → rsync -av site/ user@apt.example.com:/var/www/apt/
         → 浏览器抽查线上
 学生: 联网打开 App → 看到新课文
 ```
@@ -1043,6 +1043,6 @@ Mac mini: 编辑 materials.json
 | v1.0 | 2026-10-07 | 基于四轮迭代整理成文，定义组件边界、接口契约、部署流程、验收清单与风险 | Dr. Dai Lei |
 | v1.5 | 2026-10-07 | **M6 双释义 + 发音代理改 POST**：①发音代理接口由 `GET /api/tts?t=` 改为 `POST /api/tts`（body 为纯文本），理由是 GET 的 request line 有长度上限、且查询串会进 access log；②代理覆写 `log_message` 做日志脱敏，只输出方法、路径与状态码；③`sents[].en` / `sents[].zh` 逐句双语；④`words[].en` / `words[].ff` / `set.show` 三模式；⑤内容格式兼容层（数组与对象两种写法） |
 | v1.4 | 2026-10-07 | **配合 M5 坚持率改进修订数据契约**：①`set` 对象字段表补全（`goalW` 默认 5、`goalMin` 默认 15、新增 `revBatch` 30、`weekGoal` 5、`weekStart`、`schema`、`lastExport`），并写明默认值只影响新用户；②`words[].lapse` 字段；③新增 11.2.1 节区分 `lapse` 与 `box` 语义（三条硬规则，防止 coder 把两者一起清零导致错词本失效）；④`sents[].zh` 可选逐句翻译字段 |
-| v1.3 | 2026-10-07 | **确定最终命名**：站名 APT、仓库 `dailei/apt`、域名 `apt.lababa.live`、VPS 根目录 `/var/www/apt`、服务 `apt-tts`、localStorage 键 `aptapp`（初版曾用 `ptapp`，因未部署故直接改净）。新增 4.1 命名口径表供 coder 对照；原 4.1 的「A 记录必须先指向 VPS」前置条件与 v1.2 结论矛盾，已删除并改为泛解析说明。**`pt-PT` 与 `pt-BR` 是语言标签，不在改名范围内** |
-| v1.2 | 2026-10-07 | **按 `~/router` 机队事实核对后的修订**：①反向代理由 nginx 改为 **Caddy v2.11.4**（线上实装），删除 certbot/nginx 全部步骤，给出 Caddyfile 站点块样例与 nginx→Caddy 能力映射；②新增第 3 章「既有基础设施约束」，含四台机器真实规格、信任边界、与既有 lababa/PostgreSQL/云镜的共存约束；③**不需要 A 记录**（`lababa.live` 已配泛解析`*`）；④内容工厂确认为 Mac mini M2（`100.89.60.63`），并明确 VPS 1.9 GiB 不得跑合成与质检；⑤仓库托管定位到 Gitea `100.85.211.15:3001`，要求建private 仓 `dailei/apt`；⑥Caddy 无内建限流，日限额成为唯一兜底（C-4 升级）；⑦访问日志处置改为 `log_skip /api/*`；⑧VPS 时区核实为 Asia/Shanghai，C-1b 结论反转；⑨各章节目录与小节号顺延 |
+| v1.3 | 2026-10-07 | **确定最终命名**：站名 APT、仓库 `yourname/apt`、域名 `apt.example.com`、VPS 根目录 `/var/www/apt`、服务 `apt-tts`、localStorage 键 `aptapp`（初版曾用 `ptapp`，因未部署故直接改净）。新增 4.1 命名口径表供 coder 对照；原 4.1 的「A 记录必须先指向 VPS」前置条件与 v1.2 结论矛盾，已删除并改为泛解析说明。**`pt-PT` 与 `pt-BR` 是语言标签，不在改名范围内** |
+| v1.2 | 2026-10-07 | **按 `~/router` 机队事实核对后的修订**：①反向代理由 nginx 改为 **Caddy v2.11.4**（线上实装），删除 certbot/nginx 全部步骤，给出 Caddyfile 站点块样例与 nginx→Caddy 能力映射；②新增第 3 章「既有基础设施约束」，含四台机器真实规格、信任边界、与既有 lababa/PostgreSQL/云镜的共存约束；③**不需要 A 记录**（`example.com` 已配泛解析`*`）；④内容工厂确认为 Mac mini M2（`100.64.0.2`），并明确 VPS 1.9 GiB 不得跑合成与质检；⑤仓库托管定位到 Gitea `100.64.0.1:3001`，要求建private 仓 `yourname/apt`；⑥Caddy 无内建限流，日限额成为唯一兜底（C-4 升级）；⑦访问日志处置改为 `log_skip /api/*`；⑧VPS 时区核实为 Asia/Shanghai，C-1b 结论反转；⑨各章节目录与小节号顺延 |
 | v1.1 | 2026-10-07 | 目录结构改为 site/tools/server 三分，脚本不再随发布上传；修正 certbot 与 location 的配置顺序；明确句子只走两级降级链、单词才走代理；read 结构改为对象；`ignoreSearch` 适用范围按资源类型分开并加禁止项；音频不入 git 的决策统一；补充 id 格式上限、同步所需的时间戳与墓碑、UTC 时区对日限额的影响；T5 定为access_log off；nginx 配置形态给出完整样例 | Dr. Dai Lei |

@@ -8,8 +8,8 @@
 | 位置 | 值 |
 |---|---|
 | 站名 / App 主屏名 | **APT** |
-| 仓库 | Gitea **`dailei/apt`**（private） |
-| 域名 | **`apt.lababa.live`** |
+| 仓库 | Gitea **`yourname/apt`**（private） |
+| 域名 | **`apt.example.com`** |
 | VPS 静态根目录 | `/var/www/apt` |
 | 代理服务 | `apt-tts`（unit、env、StateDirectory 同名） |
 | 代理环境文件 | `/etc/apt-tts.env`（600） |
@@ -30,8 +30,8 @@
 7. **句子不走发音代理**。代理限 100 字符，课文句子超限会返回 400。句子降级链是「预生成音频 → 系统语音」，只有单词才走代理。
 8. **真机验证**：每个前端任务都必须在 iPhone 的「主屏幕 App」模式下验证。桌面浏览器和模拟器的结果不算数。
 9. **不要装 nginx，不要跑 certbot**。线上 VPS 已装 **Caddy v2.11.4** 并在跑 lababa 应用，80/443 已占。配置一律改 `/etc/caddy/Caddyfile`，改前必须备份，`caddy validate` 通过后才 reload。
-10. **合成与质检只在 Mac mini M2 上跑**。VPS 只有 1.9 GiB 内存且已跑 Caddy + lababa + PostgreSQL，不要在上面跑音频合成或 Whisper。M2 地址 `100.89.60.63`，用户 `dail`。
-11. **不需要添加 DNS A 记录**。`lababa.live` 已配泛解析 `*`，`apt.lababa.live` 自动生效。
+10. **合成与质检只在 Mac mini M2 上跑**。VPS 只有 1.9 GiB 内存且已跑 Caddy + lababa + PostgreSQL，不要在上面跑音频合成或 Whisper。M2 地址 `100.64.0.2`，用户 `dail`。
+11. **不需要添加 DNS A 记录**。`example.com` 已配泛解析 `*`，`apt.example.com` 自动生效。
 12. **不要动已有的复习重排逻辑**。点「没记住」使 `box=0`、`due=今天` 并放回队尾，该词当轮必然再现直到点「记住了」。**不需要也不允许**额外实现「一轮结束后重排错词」。
 13. **`lapse` 与 `box` 语义不同，禁止一起清零**。`box` 是当前熟练度（决定下次复习日期），`lapse` 是历史累计失败次数（只增不减）。点「没记住」时 `box=0` 且 `lapse+=1`；听写判错只加 `lapse` 不动 `box`。任何情况下都不重置 `lapse`。
 14. **冲突处理**：文档和代码冲突、或者文档没写到的地方，先停下来提问，不要自行决定。改了行为，要同步修改 DESIGN 和 CONTRACT。
