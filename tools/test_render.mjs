@@ -568,57 +568,88 @@ await send('Emulation.setUserAgentOverride', { userAgent: '' });
 
 // ---------- 场景 16：多档案隔离（M10-1） ----------
 //
-// 一台设备上可以有多个档案（aptapp / aptapp:<user>），互不污染。
-// 首次给某台设备绑定授权码时，如果匿名档里已有记录会先 confirm 问一句
-// （harness 自动点「确定」，等于选择带过来）。
+// 这个场景**自己造初始状态**（直接写入 aptapp 一个已知的文档），不依赖前面
+// 场景留下的东西 —— 之前就是因为依赖前序状态，匿名档里攒了 13 个词，
+// 「带过来 1 个词」的断言就挂了。测试要自给自足。
+
+// 这两个测试 token 在服务端也会攒数据（前几轮跑出来的），先各自清空 ——
+// 否则每次运行都会被拉回来，断言永远对不上。
+for (const tk of ['ann-x1y2z3', 'bob-a9b8c7']) {
+  await evaluate(`fetch('api/sync', { method: 'PUT',
+    headers: { Authorization: 'Bearer ${tk}', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ doc: { words: [], logs: {}, lessons: {}, set: {}, del: [], seq: 0 },
+                           board: { enabled: false, name: '', done: false, streak: 0 } })
+  }).then(r => r.status).catch(() => 0)`);
+}
+await sleep(300);
 
 await evaluate(`localStorage.clear()`);
 await goto(URL_);
+// 直接塞一个只有 1 个词的匿名档，并把 profile 标记为未绑定
 await evaluate(`(function(){
-  show('words');
-  addW('obrigado', '谢谢', 'Obrigado!', '', 'thank you', '');
-  save();
+  localStorage.setItem('aptapp', JSON.stringify({
+    words: [{ id: 'seed1', pt: 'obrigado', en: 'thank you', zh: '谢谢', ex: '',
+              a: '', box: 0, lapse: 0, due: today(), added: today(), upd: Date.now() }],
+    logs: {}, lessons: {}, set: { schema: 4, goalW: 5, goalMin: 15, revBatch: 30,
+    weekGoal: 5, weekStart: 0, lastExport: 0, voice: 'pt-PT', show: 'both' }, del: [], seq: 0 }));
+  localStorage.removeItem('aptuser');
 })()`);
-await sleep(300);
+await goto(URL_);
 const anonN = await evaluate(`JSON.parse(localStorage.getItem('aptapp')||'{}').words.length`);
-check('匿名档写入的是 aptapp', anonN === 1, `${anonN} 个词`);
+check('匿名档是 1 个词（自造状态）', anonN === 1, `${anonN} 个词`);
 
-// 绑定 ann 的授权码 → 匿名档的记录被带过来
+// 绑定 ann 的授权码 → 匿名档的记录被带过来（confirm 由 harness 自动确定）
 await gotoHash(URL_, '#u=ann-x1y2z3');
 await sleep(500);
-const annKey = await evaluate(`Object.keys(localStorage).filter(k => k.startsWith('aptapp')).sort()`);
+const annKey = await evaluate(`Object.keys(localStorage).filter(k => k.indexOf('aptapp:') === 0).sort()`);
 check('出现了独立档案键 aptapp:ann-x1y2z3', annKey.includes('aptapp:ann-x1y2z3'), JSON.stringify(annKey));
 const annN0 = await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`);
-check('匿名档的记录被带进 ann 的档案', annN0 === 1, `${annN0} 个词`);
+check('匿名档的记录被带进 ann 的档案（1 个）', annN0 === 1, `${annN0} 个词`);
 check('匿名档本身没有被清掉', await evaluate(`JSON.parse(localStorage.getItem('aptapp')||'{}').words.length`) === 1, '');
 
 // 在 ann 档案里再加两个词
-await evaluate(`(function(){ addW('a conta', '账单', '', '', 'bill', ''); addW('o pao', '面包', '', '', 'bread', ''); save(); })()`);
+await evaluate(`(function(){
+  addW('a conta', '账单', '', '', 'bill', ''); addW('o pao', '面包', '', '', 'bread', ''); save();
+})()`);
 await sleep(300);
 const annN1 = await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`);
-check('ann 档案里能继续累加', annN1 === 3, `${annN1} 个词`);
+check('ann 档案里能继续累加（3 个）', annN1 === 3, `${annN1} 个词`);
 
-// 换成 bob 的授权码 → 新档案，看不到 ann 的词
+// 换成 bob 的授权码 → 新档案
 await gotoHash(URL_, '#u=bob-a9b8c7');
 await sleep(500);
 const bobN = await evaluate(`JSON.parse(localStorage.getItem('aptapp:bob-a9b8c7')||'{}').words.length`);
 check('bob 的档案是新的（看不到 ann 的词）', bobN === 1, `${bobN} 个词 —— 1 是匿名档带过来的`);
-check('切档不影响 ann 的档案', await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`) === 3, '');
+check('切档不影响 ann 的档案（仍是 3）',
+  await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`) === 3, '');
 const dN = await evaluate(`D.words.length`);
 check('界面上加载的是当前档案的数据', dN === 1, `D.words = ${dN}`);
 
 // ---------- 场景 17：端到端多设备同步（M10-2/M10-3/M10-4） ----------
 //
-// 需要 tools/dev_server.py 那种「静态站 + /api/sync 同端口」的服务器。
+// 需要 /api/sync 可用：本地用 tools/dev_server.py，线上是 Caddy 反代的真服务。
 // 两台设备用**同一 token**、不同本地存档来模拟：把 A 的 localStorage 快照存下来、
 // 清空当成 B、再恢复快照当成 A 回来。
 // 如果 URL_ 指向的是纯静态服务器，这一段会整体跳过。
 
-const hasApi = await evaluate(`fetch('api/sync', {method:'GET'}).then(r => r.status).catch(() => 0)`);
-if (!/:(8130|8124)\//.test(URL_) || !hasApi) {
-  check('（跳过）多设备同步需要 dev_server.py', true, 'URL_ 不是 dev_server');
+// 用一个**专用测试 token**（不占发给家人的那 5 个），所以可以放心对线上跑。
+const TOK = process.env.SYNC_TEST_TOKEN || 'zztest-aaaa1111';
+const apiStatus = await evaluate(
+  `fetch('api/sync', { headers: { Authorization: 'Bearer ${TOK}' } }).then(r => r.status).catch(() => 0)`);
+if (apiStatus !== 200) {
+  check('（跳过）同步接口不可用（纯静态服务器？）', true, `api/sync 返回 ${apiStatus}`);
 } else {
-  const TOK = 'dev-aaa111';
+  // 服务端是持久化的：开始前把它重置成空，结束后再清一次。
+  // 不清的话上一轮的数据会被拉进来，断言全乱；打卡板还会在真实的家庭打卡板里
+  // 留下一条假记录。
+  const emptyDoc = JSON.stringify({ doc: { words: [], logs: {}, lessons: {}, set: {}, del: [], seq: 0 },
+                                    board: { enabled: false, name: '', done: false, streak: 0 } });
+  const resetRemote = async () => evaluate(
+    `fetch('api/sync', { method: 'PUT',
+        headers: { Authorization: 'Bearer ${TOK}', 'Content-Type': 'application/json' },
+        body: ${JSON.stringify(emptyDoc)} }).then(r => r.status)`);
+  await resetRemote();
+  await sleep(300);
   // A：造数据并上传
   await evaluate(`localStorage.clear(); localStorage.setItem('aptuser', ${JSON.stringify(TOK)})`);
   await goto(URL_);
@@ -636,9 +667,11 @@ if (!/:(8130|8124)\//.test(URL_) || !hasApi) {
 
   // B：另一台设备，同一 token
   await evaluate(`localStorage.clear(); localStorage.setItem('aptuser', ${JSON.stringify(TOK)})`);
+  // 在 goto **之前**查本地档案：页面一加载启动同步就会把远端的词拉进来，
+  // 那时再断言「是空的」必然失败 —— 那是 App 正常工作，不是 bug。
+  const localBefore = await evaluate(`localStorage.getItem(${JSON.stringify('aptapp:' + 'TOK')})`);
+  check('B 设备本地还没有任何档案（确实是新设备）', localBefore === null, String(localBefore).slice(0, 40));
   await goto(URL_);
-  const nB0 = await evaluate(`D.words.length`);
-  check('B 设备一开始是空的（确实是新设备）', nB0 === 0, `${nB0} 个词`);
   await evaluate(`syncNow()`);
   await sleep(500);
   const afterB = await evaluate(`(function(){
@@ -649,9 +682,13 @@ if (!/:(8130|8124)\//.test(URL_) || !hasApi) {
   check('合并后 box 与 lapse 原样保留（不归零）', afterB.box === 4 && afterB.lapse === 2, JSON.stringify(afterB));
 
   // B 再加一个词并上传
-  await evaluate(`(function(){ addW('o pao', '面包', '', '', 'bread', ''); save(); })()`);
+  const bLocal = await evaluate(`(function(){ addW('o pao', '面包', '', '', 'bread', ''); save(); return D.words.length; })()`);
   await evaluate(`syncNow()`);
   await sleep(400);
+  const bSrv = await evaluate(`fetch('api/sync', { headers: { Authorization: 'Bearer ${TOK}' }, cache: 'no-store' })
+      .then(r => r.json()).then(j => ((j.doc && j.doc.words) || []).length)`);
+  check('B 本地加到了 3 个词', bLocal === 3, `本地 ${bLocal}`);
+  check('B 上传后服务端是 3 个词', bSrv === 3, `服务端 ${bSrv}`);
 
   // A 回来（恢复 A 的快照），同步后应看到 B 加的词
   await evaluate(`localStorage.clear();
@@ -660,6 +697,9 @@ if (!/:(8130|8124)\//.test(URL_) || !hasApi) {
   await goto(URL_);
   const nA1 = await evaluate(`D.words.length`);
   check('A 恢复快照后是原来的 2 个词', nA1 === 2, `${nA1} 个词`);
+  const srvBeforeA = await evaluate(`fetch('api/sync', { headers: { Authorization: 'Bearer ${TOK}' }, cache: 'no-store' })
+      .then(r => r.json()).then(j => ((j.doc && j.doc.words) || []).length)`);
+  check('A 同步前服务端是 3 个词（B 的已落库）', srvBeforeA === 3, `服务端 ${srvBeforeA}`);
   await evaluate(`syncNow()`);
   await sleep(500);
   const nA2 = await evaluate(`D.words.length`);
@@ -674,11 +714,22 @@ if (!/:(8130|8124)\//.test(URL_) || !hasApi) {
   check('设置页有家庭打卡板开关（默认关闭）',
     /家庭打卡板/.test(statsTxt) && (await evaluate(`!D.set.boardOn`)), '');
 
-  // 打开打卡板 → 服务端才收录
+  // 打开打卡板 → 服务端才收录。显式再同步一次，别依赖自动触发的时机。
   await evaluate(`toggleBoard(true)`);
+  await sleep(400);
+  await evaluate(`syncNow()`);
+  await sleep(400);
+  await evaluate(`loadBoard()`);
   await sleep(600);
   const boardTxt = await evaluate(`(document.getElementById('board')||{}).innerText || ''`);
   check('打开打卡板后能看到自己的打卡状态', /已打卡|还没打卡/.test(boardTxt), boardTxt.slice(0, 60).replace(/\n/g, '|'));
+
+  // 收尾：把测试数据从服务端清掉（否则会留在真实的家庭打卡板里）
+  await resetRemote();
+  await sleep(300);
+  const clean = await evaluate(
+    `fetch('api/board', { cache: 'no-store' }).then(r => r.json()).then(j => (j.entries || []).some(e => e.name.indexOf('zztest') >= 0))`);
+  check('收尾：测试档案已从打卡板清掉', clean === false, '打卡板里还有 zztest');
 }
 
 // ---------- 汇总 ----------

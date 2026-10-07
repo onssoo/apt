@@ -1430,7 +1430,8 @@ function maybeShowWelcome() {
  */
 const SYNC_URL = 'api/sync';
 const BOARD_URL = 'api/board';
-let syncBusy = false;
+let syncInFlight = null;   // 用 Promise 而不是布尔量：撞上并发时**等它跑完再补一次**，
+                           // 用布尔量会把这次改动直接丢掉（打卡板开关就这么丢过一次）
 
 function syncOn() { return !!currentUser(); }
 
@@ -1445,8 +1446,14 @@ function syncRelTime(ms) {
 }
 
 async function syncNow() {
-  if (!syncOn() || syncBusy) return null;
-  syncBusy = true;
+  if (!syncOn()) return null;
+  while (syncInFlight) { try { await syncInFlight; } catch (e) {} }   // 串行：等别人跑完再轮到我
+  const p = doSync();
+  syncInFlight = p;
+  try { return await p; } finally { if (syncInFlight === p) syncInFlight = null; }
+}
+
+async function doSync() {
   const t = currentUser();
   const hdr = { Authorization: 'Bearer ' + t };
   try {
@@ -1480,8 +1487,6 @@ async function syncNow() {
     save();
     render();
     return false;
-  } finally {
-    syncBusy = false;
   }
 }
 
