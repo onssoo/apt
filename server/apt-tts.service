@@ -1,7 +1,7 @@
 # apt-tts —— 发音代理。放/etc/systemd/system/apt-tts.service
 # 密钥在 /etc/apt-tts.env（600 root），由 EnvironmentFile 读取。
 [Unit]
-Description=APT TTS proxy (apt.lababa.live)
+Description=APT TTS proxy (apt.example.com)
 After=network-online.target
 Wants=network-online.target
 

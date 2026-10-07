@@ -12,11 +12,11 @@
 #
 # 说明：
 # - Caddy 自动签发与续期证书，不需要 ssl_certificate，不需要 certbot
-# - lababa.live 已配泛解析 *，apt.lababa.live 自动解析到本机，无需 A 记录
+# - example.com 已配泛解析 *，apt.example.com 自动解析到本机，无需 A 记录
 # - Caddy 无内建限流，日额度由 apt-tts 自身兜底（5000 字符/天）
 # - log_skip /api/* 必须有：请求体就是学生输入的学习内容
 
-apt.lababa.live {
+apt.example.com {
 	encode zstd gzip
 
 	root * /var/www/apt
