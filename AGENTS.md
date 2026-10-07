@@ -71,6 +71,9 @@ python3 tools/build_audio.py --limit 1 --slow    # 单篇 + 慢速版
 # 跑纯函数测试
 node tools/test_logic.mjs
 
+# 跑课文流水线规则测试（validate 每条规则 + merge 行为，全程在临时沙箱里，不碰仓库内容）
+python3 tools/test_rules.py
+
 # 跑真实渲染测试（无头 Chrome 真加载页面并断言，需要本机装有 Chrome）
 python3 -m http.server 8123 -d site &
 node tools/test_render.mjs http://127.0.0.1:8123/

@@ -140,6 +140,8 @@ python3 tools/validate.py --audio
 | 对话双声音（`sp:"b"` → VOICE2） | ✅ 按 sha1 逐一核对：4 句 b 全是 Duarte，其余 Raquel |
 | 前端「我导入的」分组 + 来源链接 + AI 免责小字 | ✅ 无头 Chrome 实测（注入一篇 `by:"ann"` 的课文验证） |
 | 原创课文不显示免责小字 | ✅ |
+| **validate 每条新规则逐条构造坏数据验证** | ✅ `python3 tools/test_rules.py` → **25 通过 0 失败**（段落对齐、ff 白名单、src.url、level、sp:"b"、句长、ex、跨课重复、废弃字段；以及 merge 的编号递增、查重拒绝、自动补/移除 ff、--dry-run、校验不过不写文件） |
+| 连续合并两篇编号正确 | ✅ L01 → L02 → L03，且**已有课文序列化后完全未变** |
 
 ## 二、真机清单（iPhone「主屏幕 App」模式，待 owner 勾选）
 
