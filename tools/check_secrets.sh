@@ -25,8 +25,10 @@ FOUND=0
 #  - check_secrets.sh 自身（模式串定义）
 #  - ^docs/（文档里的头名与示例是说明文字）
 #  - env.example（只有变量名）
-#  - iOS 音频解锁用的常量 base64（UklGR 字样开头，非凭据）
-EXCLUDE='check_secrets\.sh|env\.example|^docs/|UklGRiQAAABXQVZFZm10IB'
+#  - iOS 音频解锁用的常量 base64：以 UklGR 开头，是 RIFF/WAV 文件头，不是凭据。
+#    静音音频从 1 帧换成 0.1 秒真实数据后，base64 变长（约 2 KB），会撞上
+#    43+ 位 base64 的通用规则，因此按前缀整体排除。
+EXCLUDE='check_secrets\.sh|env\.example|^docs/|data:audio/wav;base64,UklGR'
 # 注：AZURE_KEY 的真值只允许出现在 .env（已 gitignore）与 VPS 的 /etc/apt-tts.env。
 
 echo "check_secrets: 扫描 ${TARGETS} ..."
