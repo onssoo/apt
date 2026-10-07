@@ -29,6 +29,7 @@ const PROFILE = '/tmp/apt-chrome-profile';
 const chrome = spawn(CHROME, [
   '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${PROFILE}`,
   '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--disable-extensions',
+  '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
   'about:blank',
 ], { stdio: 'ignore' });
 
@@ -511,6 +512,59 @@ await waitFor("document.querySelector('#read .trb')", 8000);
 await sleep(300);
 const l9b = await evaluate(`document.getElementById('read').innerText`);
 check('原创课文不显示免责小字', !/译文与讲解由 AI 生成/.test(l9b), '');
+
+/** 带 #u= 打开：只改 hash 是「同文档导航」，不会重载，所以必须真 reload。 */
+async function gotoHash(url, hash) {
+  await goto(url);
+  await evaluate(`location.hash = ${JSON.stringify(hash)}`);
+  events.length = 0;
+  await send('Page.reload');
+  for (let i = 0; i < 100; i++) { if (events.includes('Page.loadEventFired')) break; await sleep(100); }
+  await waitFor("(typeof M !== 'undefined' && M) || (typeof loadErr !== 'undefined' && loadErr)");
+  await sleep(500);
+}
+
+// ---------- 场景 15：授权码链接 / 安装引导 / 麦克风授权 ----------
+
+// 15a) 带 #u= 打开：记住授权码、抹掉地址栏里的码、弹出引导
+await evaluate(`localStorage.clear()`);
+await gotoHash(URL_, '#u=test-abc123');
+const tok = await evaluate(`localStorage.getItem('aptuser')`);
+check('授权码链接记住了用户', tok === 'test-abc123', `aptuser = ${tok}`);
+const hashAfter = await evaluate(`location.hash`);
+check('地址栏里的授权码被抹掉（避免截图/转发泄露）', hashAfter === '', `hash = ${hashAfter}`);
+const wTxt = await evaluate(`document.getElementById('welcome').innerText`);
+const wHidden = await evaluate(`document.getElementById('welcome').classList.contains('hide')`);
+check('弹出欢迎/安装引导', !wHidden && wTxt.length > 0, wTxt.slice(0, 80).replace(/\n/g, '|'));
+check('引导里说明了麦克风权限', /麦克风/.test(wTxt), '');
+check('引导里有绑定信息', /test-abc123/.test(wTxt), (wTxt.match(/[^\n]*绑定[^\n]*/) || [''])[0]);
+
+// 15b) 麦克风授权真的能拿到（用 Chrome 的假设备）
+clearErrors();
+await evaluate(`askMic()`);
+await sleep(900);
+const micOK = await evaluate(`!!(D && D.set && D.set.micOK)`);
+check('点一下就能拿到麦克风授权并记住', micOK === true, `D.set.micOK = ${micOK}`);
+check('授权过程没有页面异常', pageErrors.length === 0, pageErrors.slice(0, 2).join(' ｜ '));
+
+// 15c) 关掉引导
+await evaluate(`closeWelcome()`);
+await sleep(200);
+check('可以关掉引导', await evaluate(`document.getElementById('welcome').classList.contains('hide')`), '');
+
+// 15d) 换成 iPhone 的 UA：应给三步手动加主屏的说明（iOS 没有自动安装接口）
+await send('Emulation.setUserAgentOverride', {
+  userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+});
+await evaluate(`localStorage.clear()`);
+await gotoHash(URL_, '#u=ann-9z8y7x');
+const iosTxt = await evaluate(`document.getElementById('welcome').innerText`);
+check('iPhone 上给的是「分享 → 添加到主屏幕」三步说明',
+  /添加到主屏幕/.test(iosTxt) && /分享/.test(iosTxt), iosTxt.slice(0, 120).replace(/\n/g, '|'));
+const iosHtml = await evaluate(`document.getElementById('welcome').innerHTML`);
+check('iPhone 上不给「一键安装」按钮（iOS 没这个接口）',
+  !/doInstall\(\)/.test(iosHtml), '页面上出现了 doInstall 按钮');
+await send('Emulation.setUserAgentOverride', { userAgent: '' });
 
 // ---------- 汇总 ----------
 console.log('\n=== 无头 Chrome 渲染验证 ===');

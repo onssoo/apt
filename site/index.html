@@ -6,7 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="APT">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>APT</title>
 <!-- build 2026-10-07-11:53 -->
 <style>
@@ -64,6 +65,18 @@ progress{width:100%;height:10px;accent-color:var(--c)}
 .str{font-size:15px;line-height:1.5;color:var(--mu);margin:4px 0 4px 8px}
 .lv{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;background:#00843D22;
  color:var(--c);margin-right:6px}
+/* 带授权码链接打开时的欢迎 / 安装引导（M10 前置） */
+.sheet{position:fixed;inset:0;z-index:50;background:rgba(12,20,16,.55);
+  display:flex;align-items:flex-end;justify-content:center;padding:16px;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.sheet .box{background:var(--bg);border-radius:18px;padding:18px;width:100%;max-width:460px;
+  max-height:86vh;overflow:auto}
+.sheet h2{margin:2px 0 6px}
+.step{display:flex;gap:12px;align-items:flex-start;margin:14px 0}
+.step .n{flex:0 0 26px;height:26px;border-radius:50%;background:var(--c);color:#fff;
+  font-size:14px;line-height:26px;text-align:center;font-weight:700}
+.share{display:inline-block;border:1.5px solid var(--c);border-radius:6px;padding:0 6px;
+  color:var(--c);font-weight:700}
 .topbar{display:flex;align-items:center;gap:10px}
 .topbar .tl{flex:1}
 .topbar .tb{text-align:center;min-width:56px}
@@ -114,6 +127,7 @@ summary{font-weight:600;min-height:32px;cursor:pointer}
  <button data-t="stats" onclick="show('stats')">统计</button>
 </nav>
 <audio id="au" preload="auto"></audio>
+<div id="welcome" class="sheet hide" role="dialog" aria-modal="true"></div>
 <div id="toast" class="toast"></div>
 <script src="logic.js"></script>
 <script>
@@ -1243,6 +1257,115 @@ async function dlAll(btn) {
   btn.textContent = `已下载 ${n}/${list.length}`;
 }
 
+/* ---------- 授权码链接 / 安装引导 / 麦克风授权 ----------
+ * 专属链接形如 https://apt.example.com/#u=mei-8f3k2x
+ * 打开一次就把授权码记在这台设备上，之后「添加到主屏幕」的主屏 App 默认就是她的。
+ * 用 # 而不是 ? ：片段不会进服务器日志，也不会出现在 Referer 里。
+ *
+ * ⚠️ iOS **不提供**任何「网页把自己加到主屏幕」的接口（Android 才有
+ * beforeinstallprompt），所以这里只能给三步图示引导，不能自动加。
+ * 麦克风可以：只要在用户手势里调 getUserMedia，授权一次之后录音就不再弹。
+ */
+const USER_KEY = 'aptuser';
+function inviteToken() {
+  const m = /(?:^|[#&?])u=([A-Za-z0-9_-]{4,64})/.exec(location.hash || '');
+  return m ? m[1] : '';
+}
+function currentUser() {
+  try { return localStorage.getItem(USER_KEY) || ''; } catch (e) { return ''; }
+}
+function isStandalone() {
+  return navigator.standalone === true
+      || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+}
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+
+/** 要麦克风权限。必须在用户手势里调用，否则 iOS 直接拒。 */
+async function askMic() {
+  const btn = $('mico');
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    st.getTracks().forEach(t => t.stop());        // 拿到就立刻关掉，只是要授权
+    D.set.micOK = true; save();
+    if (btn) { btn.textContent = '✓ 麦克风已允许'; btn.className = 'g'; }
+    toast('麦克风已允许，跟读和听写可以直接用了', 2500);
+  } catch (e) {
+    if (btn) btn.textContent = '麦克风被拒绝 · 去设置里打开';
+    toast('没有拿到麦克风权限。设置 → Safari → 麦克风 里允许后再试', 5000);
+  }
+}
+
+function showWelcome(isNew) {
+  const el = $('welcome');
+  const installed = isStandalone();
+  const u = currentUser();
+  let h = `<div class="box">
+    <h2>${isNew ? '欢迎使用 APT' : '把 APT 放到主屏幕'}</h2>`;
+  if (u) h += `<p class="mu">这台设备已绑定：<b>${esc(u)}</b>（换人会换成别人的码）</p>`;
+
+  if (installed) {
+    h += `<p>已经在主屏 App 里打开了，一切就绪。</p>`;
+  } else if (isIOS()) {
+    h += `<p class="mu">iPhone 上没有「一键安装」这种接口，三步手动加一下，之后就和普通 App 一样了：</p>
+      <div class="step"><div class="n">1</div><div>用 <b>Safari</b> 打开本页（不要用微信或其它浏览器）</div></div>
+      <div class="step"><div class="n">2</div><div>点底部中间的 <span class="share">分享 ⬆︎</span> 按钮</div></div>
+      <div class="step"><div class="n">3</div><div>往下找 <b>「添加到主屏幕」</b>，点右上角「添加」</div></div>
+      <p class="mu">加完之后请从<b>主屏幕上的 APT 图标</b>打开，这样才有离线缓存和全屏。</p>`;
+  } else {
+    h += `<p>这台设备可以直接安装：</p>`;
+  }
+
+  const micOK = !!(D && D.set && D.set.micOK);
+  h += `<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
+    <p><b>麦克风权限</b></p>
+    <p class="mu">跟读对比和听写要用麦克风。现在点一下授权，之后就不再弹窗了。</p>
+    <button id="mico" class="${micOK ? 'g' : ''}" onclick="askMic()">${micOK ? '✓ 麦克风已允许' : '允许使用麦克风'}</button>`;
+
+  if (!installed && !isIOS() && deferredInstall) {
+    h += `<button style="margin-top:10px" onclick="doInstall()">一键安装到桌面</button>`;
+  }
+  h += `<div class="row" style="margin-top:14px">
+    <button class="g" onclick="closeWelcome()">${isNew ? '开始学习' : '知道了'}</button></div></div>`;
+  el.innerHTML = h;
+  el.classList.remove('hide');
+}
+function doInstall() {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  deferredInstall = null;
+}
+function closeWelcome() { $('welcome').classList.add('hide'); }
+
+/** 启动时处理授权码链接。 */
+function bootstrapInvite() {
+  const t = inviteToken();
+  let isNew = false;
+  if (t) {
+    const old = currentUser();
+    if (old && old !== t) {
+      // 同一台设备换了授权码：数据是按人分的，先问清楚再动
+      if (!confirm(`这台设备原来绑定的是 ${old}。要换成 ${t} 吗？\n（换人不会删除原数据，但界面会加载新用户的记录）`)) {
+        history.replaceState(null, '', location.pathname + location.search);
+        return;
+      }
+    }
+    try { localStorage.setItem(USER_KEY, t); } catch (e) {}
+    isNew = old !== t;
+    // 把片段从地址栏抹掉：避免她截图/转发时把码带出去
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  // 有授权码，或者还没加到主屏 → 给一次引导
+  if (t || (isIOS() && !isStandalone() && !localStorage.getItem('aptwelcome'))) {
+    showWelcome(isNew);
+    try { localStorage.setItem('aptwelcome', '1'); } catch (e) {}
+  }
+}
+
 /* ---------- 启动 ---------- */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
@@ -1259,6 +1382,7 @@ if (navigator.storage && navigator.storage.persist) {
 }
 startRound();          // 预热：进入复习页时队列已就绪
 show('today');
+bootstrapInvite();     // 授权码链接 / 安装引导 / 麦克风授权
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>

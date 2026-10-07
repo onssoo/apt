@@ -26,11 +26,11 @@ SITE_HOST=${SITE_HOST:-apt.example.com}
 # Python traceback，看不出真正原因。这里直接说清楚。
 case "$SITE_HOST" in
 	*example.com)
-		echo "❌ SITE_HOST 还是占位符（$SITE_HOST）。在 .env 里填上真实域名再发布。" >&2
+		echo "❌ SITE_HOST 还是占位符（${SITE_HOST}）。在 .env 里填上真实域名再发布。" >&2
 		exit 1
 		;;
 esac
-# 公网 22 被云镜封了，必须走 $VPS_SSH_PORT（默认 2222）。
+# 公网 22 被云镜封了，必须走 ${VPS_SSH_PORT}（默认 2222）。
 # 这里以前定义了一个 SSH 变量却从没使用，rsync 默认走 22 端口，脚本根本跑不通。
 VPS_KEY=${VPS_SSH_KEY:-}
 if [ -n "$VPS_KEY" ]; then
@@ -72,7 +72,7 @@ echo "本地 version: $LOCAL_V"
 echo "==> 3/5 上传到 $VPS_HOST:$REMOTE_DIR"
 rsync -av --progress -e "$RSYNC_SSH" site/ "$VPS_HOST:$REMOTE_DIR/"
 
-echo "==> 4/5 核对线上的 version"
+echo "==> 4/5 核对线上的 version（${SITE_HOST}）"
 # 以前这一步只 echo 本地 version 就结束了，根本没有核对。
 # 用 --no-cache 绕开 CDN/浏览器缓存，确保读的是刚上传的那份。
 REMOTE_V=$(curl -fsS --max-time 20 -H 'Cache-Control: no-cache' \
@@ -80,7 +80,7 @@ REMOTE_V=$(curl -fsS --max-time 20 -H 'Cache-Control: no-cache' \
   | python3 -c "import sys,json;print(json.load(sys.stdin).get('version'))")
 echo "线上 version: $REMOTE_V"
 if [ "$REMOTE_V" != "$LOCAL_V" ]; then
-	echo "❌ 线上 version（$REMOTE_V）与本地（$LOCAL_V）不一致，发布可能没生效。" >&2
+	echo "❌ 线上 version（${REMOTE_V}）与本地（${LOCAL_V}）不一致，发布可能没生效。" >&2
 	exit 1
 fi
 
