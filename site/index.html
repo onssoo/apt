@@ -43,6 +43,8 @@ nav button.on{color:var(--c);font-weight:600}
 .mu{color:var(--mu);font-size:14px}
 /* 学习内容不小于 15px（M2-3） */
 .ex{font-size:15px;color:var(--mu);line-height:1.5;margin-top:2px}
+.src{font-size:13px;margin-top:2px}
+.src a{color:var(--c)}
 .gloss{font-size:17px;line-height:1.5}
 .gloss .zh{color:var(--mu);font-size:15px;display:block;margin-top:1px}
 .w{padding:11px 0;border-bottom:1px solid #8882}
@@ -492,6 +494,23 @@ function exportNow() {
 /* ================================================================
  * 阅读页
  * ================================================================ */
+/** 是不是她导入的课文（M8-4）：按导入人分组，与「我维护的」分开显示。 */
+function isMine(l) {
+  return String((l && l.by) || '').toLowerCase() === 'ann';
+}
+/** 课文的来源行：B 改编 / C 导入都带 src，显示站名与链接。 */
+function srcLine(l) {
+  const src = l && l.src;
+  if (!src || typeof src !== 'object') return '';
+  const site = (src.site || '').trim();
+  const url = (src.url || '').trim();
+  if (!site && !url) return '';
+  const label = site || '原文';
+  return `<div class="mu src">来源：${url
+    ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`
+    : esc(label)}</div>`;
+}
+
 function rRead() {
   const el = $('read');
   if (!M) {
@@ -502,16 +521,19 @@ function rRead() {
     return;
   }
   if (!curL) {
+    // 她导入的课文单独分组放在最前面（M8-4）
+    const mine = M.lessons.filter(isMine);
+    const rest = M.lessons.filter(l => !isMine(l));
+    const card = l => `<div class="card" onclick="openL(${jid(l.id)})"><div class="row">
+        <div><span class="lv">${esc(l.level)}</span><b>${esc(l.title)}</b>
+          <div class="mu">${esc(l.zh)} · 约 ${l.min} 分钟</div>
+          ${srcLine(l)}</div>
+        <div class="num">${D.lessons[l.id] ? '✓' : ''}</div></div></div>`;
     el.innerHTML = `<div class="row" style="margin-bottom:12px">
       <span class="mu">共 ${M.lessons.length} 课</span>
-      <button class="g sm" onclick="dlAll(this)">下载全部音频（离线用）</button></div>` +
-      M.lessons.map(l => {
-        const w = L.normWord(l.words[0]);
-        return `<div class="card" onclick="openL(${jid(l.id)})"><div class="row">
-        <div><span class="lv">${esc(l.level)}</span><b>${esc(l.title)}</b>
-          <div class="mu">${esc(l.zh)} · 约 ${l.min} 分钟</div></div>
-        <div class="num">${D.lessons[l.id] ? '✓' : ''}</div></div></div>`;
-      }).join('');
+      <button class="g sm" onclick="dlAll(this)">下载全部音频（离线用）</button></div>`
+      + (mine.length ? `<h2 style="margin:4px 0 8px">我导入的</h2>${mine.map(card).join('')}` : '')
+      + rest.map(card).join('');
     return;
   }
 
@@ -594,6 +616,8 @@ function vRead(l, S) {
     ${trHtml}</div>
 
   ${l.note ? `<div class="card"><h2>语法点</h2><div style="line-height:1.75;font-size:15px">${esc(l.note)}</div></div>` : ''}
+  ${isMine(l) ? `<p class="mu" style="font-size:13px;line-height:1.6;margin:8px 2px 0">
+    译文与讲解由 AI 生成，仅供参考，以老师讲法为准。</p>` : ''}
 
   <div class="card"><div class="row"><h2>生词</h2>
     <button class="sm" onclick="addAllL()">全部加入单词本</button></div>

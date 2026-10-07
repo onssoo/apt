@@ -20,6 +20,23 @@ MATERIALS = os.path.join(ROOT, "site", "materials.json")
 AUDIO_DIR = os.path.join(ROOT, "site", "audio")
 
 LESSON_ID_RE = re.compile(r"^L\d{2,}$")
+LEVELS = ("A1", "A2", "B1", "B2")
+
+# 假朋友白名单（M8）：ff 只能来自这里。Agent 不手写 ff，
+# 由 tools/merge_lesson.py 按 pt 自动补；validate 在这里把关。
+FF_LIST_PATH = os.path.join(ROOT, "tools", "ff_list.json")
+
+
+def load_ff_list():
+    try:
+        d = json.load(open(FF_LIST_PATH, encoding="utf-8"))
+        return {k.strip().lower(): v for k, v in (d.get("words") or {}).items()}
+    except Exception as e:
+        print(f"[警告] 读不到 tools/ff_list.json（{e}），假朋友白名单校验跳过", file=sys.stderr)
+        return {}
+
+
+FF_LIST = load_ff_list()
 
 
 # ---------- 格式兼容（M6-1） ----------
@@ -243,11 +260,28 @@ def check_lesson(iss, idx, l, seen_ids):
         iss.err(tag, "text 为空")
         return False
 
-    if l.get("level") not in ("A1", "A2"):
-        iss.warn(tag, f"level 建议为 A1 或 A2，当前 {l.get('level')!r}")
+    if l.get("level") not in LEVELS:
+        iss.warn(tag, f"level 应为 {'/'.join(LEVELS)} 之一，当前 {l.get('level')!r}")
 
     if not isinstance(l.get("min"), int) or l.get("min", 0) <= 0:
         iss.warn(tag, f"min 应为正整数，当前 {l.get('min')!r}")
+
+    # 来源（M8）：B 改编 / C 导入都必须写 url，便于日后回溯与版权说明
+    src = l.get("src")
+    if src is not None:
+        if not isinstance(src, dict):
+            iss.err(tag, "src 必须是对象")
+        else:
+            kind = str(src.get("kind") or "").strip()
+            if kind not in ("original", "adapted", "imported"):
+                iss.err(tag, f"src.kind 应为 original/adapted/imported，当前 {kind!r}")
+            if kind in ("adapted", "imported") and not str(src.get("url") or "").strip():
+                iss.err(tag, f"src.kind={kind} 必须写 src.url（原出处）")
+
+    # 已废弃字段（M8）：trans / trans_lines 由 sents 取代，出现就提醒
+    for dead in ("trans", "trans_lines", "en_lines", "zh_lines"):
+        if dead in l:
+            iss.warn(tag, f"出现已废弃字段 {dead} —— v2 起全文翻译由前端按 sents 拼出，建议删掉")
 
     # 全文翻译：兼容字符串（旧）与对象（新）。
     # v2 起 sents 是逐句翻译的唯一来源，trans 可以完全不写 —— 前端会用
@@ -273,14 +307,20 @@ def check_lesson(iss, idx, l, seen_ids):
     if not l.get("en"):
         iss.warn(tag, "缺en（标题英文，首批重写后应补上）")
 
-    # 假朋友提示：作者应有意识地标记 ff
-    ff_words = [w for w in (l.get("words") or []) if isinstance(w, dict) and w.get("ff")]
+    # 假朋友（M8）：ff 只能来自 tools/ff_list.json 白名单。
+    # 以前是「有 ff 就必须有 reviewed」，那要求人工过一眼；现在改成按白名单
+    # 自动标注（merge_lesson.py 负责补），所以闸门换成「不在白名单就报错」。
+    ff_words = [w for w in (l.get("words") or []) if isinstance(w, dict) and str(w.get("ff") or "").strip()]
     if ff_words:
         print(f"  {tag}含 {len(ff_words)} 个假朋友标注")
-        # 假朋友最容易乱标（L01 第一批四个全是错的），必须人工过一眼才放行
-        if not str(l.get("reviewed") or "").strip():
-            iss.err(tag, f"有 {len(ff_words)} 个假朋友标注（ff）但缺 reviewed 字段。"
-                         f"假朋友必须人工确认过，请在课文里加 reviewed: \"YYYY-MM-DD\"")
+        for w in ff_words:
+            pt = str(w.get("pt") or "").strip().lower()
+            if FF_LIST and pt not in FF_LIST:
+                iss.err(tag, f"生词 {w.get('pt')!r} 的 ff 不在 tools/ff_list.json 白名单里。"
+                             f"要么删掉 ff，要么把它加进白名单（需人工确认）")
+
+    # 把正文压成单空格形式，供「ex 是否出自正文」比较
+    text_flat = re.sub(r"\s+", " ", str(l.get("text") or "")).strip()
 
     # 生词：每项 [葡语, 释义, 例句?]
     words = l.get("words")
@@ -290,6 +330,7 @@ def check_lesson(iss, idx, l, seen_ids):
         bad = 0
         old_style = 0
         no_en = 0
+        ex_bad = 0
         for i, w in enumerate(words):
             if isinstance(w, (list, tuple)):
                 old_style += 1
@@ -303,10 +344,17 @@ def check_lesson(iss, idx, l, seen_ids):
                 bad += 1
             if not nw["en"]:
                 no_en += 1
+            # 例句应当是正文里的一句原句（M8）。汇总成一课一条，
+            # 否则存量课文里那种「改写过的例句」会一次刷几十条，淹掉别的警告。
+            if nw["ex"] and nw["ex"] not in text_flat:
+                ex_bad += 1
         if old_style and not bad:
             iss.warn(tag, f"{old_style} 个生词为旧格式（数组），建议重写为对象并补en")
         if no_en and not old_style:
             iss.warn(tag, f"{no_en} 个生词缺英文释义")
+        if ex_bad:
+            iss.warn(tag, f"{ex_bad}/{len(words)} 个生词的 ex 不是正文原句"
+                         f"（新课文请直接复制对应的 sents[].t）")
         if bad == 0 and not 10 <= len(words) <= 14:
             iss.warn(tag, f"生词数 {len(words)}（建议每篇 10 至 14）")
 
@@ -332,12 +380,43 @@ def check_lesson(iss, idx, l, seen_ids):
                     continue
                 if "a" not in sn:
                     no_audio += 1
+                if len(str(sn.get("t") or "")) > 200:
+                    iss.warn(tag, f"sents[{i}] 超过 200 字符（{len(str(sn['t']))}），句子太长不利于跟读与听写")
+            # 对话段落必须有 sp:"b"，否则全程只有一个声音（M8 补的漏洞）
+            paras = str(l.get("text") or "").split("\n")
+            dash_paras = [p for p in paras if p.strip().startswith("—")]
+            has_b = any(str(sn.get("sp") or "").lower() == "b" for sn in sents if isinstance(sn, dict))
+            if dash_paras and not has_b:
+                iss.warn(tag, f"有 {len(dash_paras)} 个破折号对话段，但没有任何 sents[] 标 sp:\"b\" —— "
+                              f"对话第二角色不会用另一个声音。见 skills/apt-lesson 第 4 节")
             if no_audio:
                 iss.warn(tag, f"{no_audio}/{len(sents)} 句未生成音频引用（跑一次 build_audio.py）")
             check_sents_alignment(iss, tag, l)
 
     check_brazilian(iss, tag, l)
     return True
+
+
+def check_cross_lesson(iss, lessons):
+    """跨课生词重复（M8）。同课内重复算提醒，跨课重复也算提醒 —— 可能是刻意复现，
+    但更可能是没查旧课，写课文前应该先看一遍已有的 words[].pt。"""
+    first = {}
+    for l in lessons:
+        tag = l.get("id", "?")
+        local = set()
+        for w in l.get("words") or []:
+            nw = norm_word(w)
+            pt = nw["pt"].strip().lower()
+            if not pt:
+                continue
+            if pt in local:
+                iss.warn(tag, f"生词 {nw['pt']!r} 在本课里出现了两次")
+                continue
+            local.add(pt)
+            if pt in first:
+                iss.warn(tag, f"生词 {nw['pt']!r} 已在 {first[pt]} 出现过（跨课重复）")
+            else:
+                first[pt] = tag
 
 
 def check_audio(iss, lessons):
@@ -385,6 +464,8 @@ def main():
     seen = set()
     for i, l in enumerate(data["lessons"]):
         check_lesson(iss, i, l, seen)
+
+    check_cross_lesson(iss, data["lessons"])
 
     if args.audio:
         check_audio(iss, data["lessons"])

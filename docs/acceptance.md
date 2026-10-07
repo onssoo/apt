@@ -21,13 +21,13 @@
 
 ```bash
 python3 -m http.server 8123 -d site &     # 本地起站
-node reports/smoke_m7.mjs http://127.0.0.1:8123/     # 本地
-node reports/smoke_m7.mjs https://apt.example.com/   # 线上
+node tools/test_render.mjs http://127.0.0.1:8123/     # 本地
+node tools/test_render.mjs https://apt.example.com/   # 线上
 node tools/test_logic.mjs
 python3 tools/validate.py --audio
 ```
 
-`reports/` 不入 git；`reports/smoke_m7.mjs` 是这台机器上的验证脚本。
+`tools/test_logic.mjs` 与 `tools/test_render.mjs` 都只依赖 node 内置模块，可随时重跑。
 
 ### M7-1 七个线上 bug
 
@@ -128,6 +128,18 @@ python3 tools/validate.py --audio
 | 线上文件与本地逐字节一致 | ✅ 9/9 |
 
 ---
+
+### M8 课文流水线
+
+| 验收点 | 结果 |
+|---|---|
+| `merge_lesson.py` 分配编号、自动补假朋友、草稿归档 | ✅ 实测：L09 / `o compromisso` / `drafts/done/cafe.json` |
+| 并入不影响已有课文 | ✅ 合并后逐课比对：原有 8 课序列化内容完全一致 |
+| 单篇校验复用 validate 规则 | ✅ |
+| `build_audio.py --only L09` | ✅ 新合成 24 条 / 复用 1 条 / 528 字符，其他课零改动 |
+| 对话双声音（`sp:"b"` → VOICE2） | ✅ 按 sha1 逐一核对：4 句 b 全是 Duarte，其余 Raquel |
+| 前端「我导入的」分组 + 来源链接 + AI 免责小字 | ✅ 无头 Chrome 实测（注入一篇 `by:"ann"` 的课文验证） |
+| 原创课文不显示免责小字 | ✅ |
 
 ## 二、真机清单（iPhone「主屏幕 App」模式，待 owner 勾选）
 

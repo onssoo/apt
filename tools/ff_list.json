@@ -1,0 +1,25 @@
+{
+ "_note": "假朋友白名单。merge_lesson.py 合并课文时按生词的 pt 自动补 ff；validate.py 要求 ff 只能来自这里。Agent 任何模式下都不手写 ff。",
+ "_how": "键是生词在 words[].pt 里的写法（大小写与首尾空格不敏感）。值是显示在词下面的说明，写法是「≠ 英文词（误解义）。正确说法是……」或「= 葡语义项」。",
+ "words": {
+  "a livraria": "≠ library。图书馆是 a biblioteca",
+  "o largo": "≠ large。作形容词时 largo 是 wide「宽的」；large 是 grande",
+  "atualmente": "≠ actually。是「目前、现在」；actually 是 na verdade",
+  "puxar": "≠ push。是「拉」；推是 empurrar",
+  "a professora": "≠ professor（英文多指大学教授）。葡语 professor / professora 指任何老师，从小学到大学都这么叫",
+  "o colégio": "≠ college（大学、学院）。葡语 colégio 一般指（私立）中小学；大学是 universidade",
+  "o colégio residencial": "≠ college（大学、学院）。葡语 colégio 一般指（私立）中小学；colégio residencial 是澳大书院的专门叫法，大学本身叫 universidade",
+  "provar": "不只是 prove。在餐桌和试衣间里，provar 是 taste / try (on)；证明某事才是 provar que…",
+  "o tempo": "≠ tempo（节奏、速度）。葡语 o tempo 是天气或时间：Como está o tempo? / Não tenho tempo.",
+  "o curso": "≠ course（一门课）。o curso 是整个学位专业；一门课叫 a cadeira 或 a disciplina",
+  "a fábrica": "≠ fabric（布料）。是「工厂」；布料是 o tecido",
+  "sensível": "≠ sensible（明智的）。是「敏感的」；明智是 sensato",
+  "assistir a": "≠ assist（协助）。是「观看、出席」：assistir a um filme；协助是 ajudar",
+  "pretender": "≠ pretend（假装）。是「打算、想要」；假装是 fingir",
+  "constipado": "≠ constipated（便秘）。是「感冒了」：Estou constipado.",
+  "a planta": "≠ plant（植物）时也对，但在澳门常指「楼层/平面图」：moro na terceira planta",
+  "o cimento": "≠ cement 时也对，但注意 o cimento 是水泥；水泥地/混凝土地面是 o betão",
+  "a bolsa": "≠ purse 一个意思。也指「奖学金」：ganhei uma bolsa",
+  "o compromisso": "≠ compromise（妥协）。是「约定、承诺」；妥协是 o acordo / ceder"
+ }
+}

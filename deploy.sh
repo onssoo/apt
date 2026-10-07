@@ -22,6 +22,14 @@ VPS_HOST=${VPS:-ubuntu@203.0.113.10}
 VPS_PORT=${VPS_SSH_PORT:-2222}
 REMOTE_DIR=${REMOTE_DIR:-/var/www/apt}
 SITE_HOST=${SITE_HOST:-apt.example.com}
+# 守卫：SITE_HOST 还是 .env.example 里的占位符时，curl 会解析失败并抛一段
+# Python traceback，看不出真正原因。这里直接说清楚。
+case "$SITE_HOST" in
+	*example.com)
+		echo "❌ SITE_HOST 还是占位符（$SITE_HOST）。在 .env 里填上真实域名再发布。" >&2
+		exit 1
+		;;
+esac
 # 公网 22 被云镜封了，必须走 $VPS_SSH_PORT（默认 2222）。
 # 这里以前定义了一个 SSH 变量却从没使用，rsync 默认走 22 端口，脚本根本跑不通。
 VPS_KEY=${VPS_SSH_KEY:-}

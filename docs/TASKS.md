@@ -245,6 +245,29 @@ M5 插在 M3 之前，因为坚持率改进的价值高于内容工厂工具化�
 
 **验证工具**：`tools/test_logic.mjs`（103 项纯函数测试）与 `tools/test_render.mjs`（37 项无头 Chrome 真实渲染断言，可打本地也可打线上）。两者都只依赖 node 内置模块。
 
+### M8 课文生产流水线（已完成，2026-10-07）
+
+> 目标：让 Agent（或 Ann 自己）能**按规范产出课文并自动上线**，人只在 A/B 模式把关。
+> 规范的真源是 [`skills/apt-lesson/SKILL.md`](../skills/apt-lesson/SKILL.md)。
+
+| 任务 | 内容 | 验收 |
+|---|---|---|
+| M8-1 | 规范做成 skill：`skills/apt-lesson/SKILL.md`（三种模式、JSON 结构、`sents` 切句与段落对齐、欧葡口径、生词选词、假朋友、级别长度、交付报告）；`docs/CONTENT_PROMPT.md` 缩成一行指向它；`AGENTS.md` 顶部加「课文任务先读 apt-lesson」 | 新 Agent 读到 `AGENTS.md` 即被导向规范 |
+| M8-2 | `tools/merge_lesson.py`：`id:"auto"` 自动分配编号；按 `tools/ff_list.json` **自动补假朋友**；正文查重（含前 120 字）；复用 `validate.py` 的单篇规则；并入前断言**已有课文的序列化内容逐字节未变**；草稿归档到 `drafts/done/`；`--dry-run` | 连续并入多篇编号正确，原有课文零变化 |
+| M8-3 | `validate.py` 扩充：`level` 允许 B1/B2；`ex` 不在正文中（一课一条汇总）；有破折号对话段却无任何 `sp:"b"`；单句超 200 字符；跨课生词重复；`src.kind=adapted/imported` 缺 `src.url` 报错；`trans`/`trans_lines` 等废弃字段提醒；**`ff` 必须来自白名单**（取代原「有 ff 必须有 reviewed」） | 逐条构造坏数据都能被拦下或提醒 |
+| M8-4 | 前端：`by:"ann"` 的课文在列表顶部单独分组为「我导入的」；有 `src` 的显示来源站名与外链；`ann` 的课文页底部一行小字「译文与讲解由 AI 生成，仅供参考，以老师讲法为准」 | 三种状态在 iPhone 主屏 App 里各验一次 |
+| M8-5 | `build_audio.py --only L09[,L10]`，并在结尾打印本次处理了哪几课 | 只给指定课文配音，其他课不动 |
+| M8-6（第二期，未做） | App 内「导入文章」表单 → `POST /api/inbox` → Mac mini 定时用 C 模式自动处理并上线；她的课文单独放 `site/materials-ann.json`（前端合并显示，Caddy 加口令）；`GET /api/inbox/status` 回执；隐藏/重新生成按钮 | 见 `skills/apt-lesson` 第 14 节 |
+
+**端到端实测（2026-10-07）**：按规范手写 `drafts/cafe.json`（A2 对话，13 生词）→
+`merge_lesson.py` 分配 **L09**、自动标注假朋友 `o compromisso`、草稿归档 →
+`build_audio.py --only L09` **新合成 24 条 / 528 字符**（旧课零重录）→
+按哈希逐一核对 **4 句 `sp:"b"` 全部用 VOICE2（Duarte）**、其余用 Raquel →
+`deploy.sh` 上线 → 线上真实渲染与交互验证 **70/70**。
+
+**顺带修掉的**：`deploy.sh` 在 `SITE_HOST` 还是 `.env.example` 的占位符时，会 curl 失败并
+抛一段 Python traceback，看不出真正原因。现在开头就明确报「SITE_HOST 还是占位符」并退出。
+
 ---
 
 ## 4. 完成定义（DoD）

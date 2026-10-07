@@ -9,3 +9,7 @@ tools/.qa_cache/
 node_modules/
 __pycache__/
 *.pyc
+
+# 课文草稿：含导入的原文，可能涉版权，不入 git
+drafts/
+

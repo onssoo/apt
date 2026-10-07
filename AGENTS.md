@@ -19,6 +19,15 @@
 
 ⚠️ **`pt-PT` 与 `pt-BR` 是语言标签，不在改名范围内。**
 
+## 先读这个：课文任务
+
+**凡是新增课文、改课文、导入葡语文章，先读 [`skills/apt-lesson/SKILL.md`](skills/apt-lesson/SKILL.md)。**
+那里是课文制作规范的唯一真源：三种模式（原创 / 改编 / 导入）、JSON 结构、`sents` 切句与
+段落对齐规则、欧葡口径、生词选词、假朋友白名单、级别与长度、交付报告格式。
+
+流程固定为：写单篇到 `drafts/` → `python3 tools/merge_lesson.py` → `validate.py --audio`
+→ `build_audio.py` → `deploy.sh`。**不要直接编辑 `site/materials.json`。**
+
 ## 硬规则
 
 1. **零依赖**：不引入框架、构建步骤、npm 包、CDN、第三方脚本或字体。Python只用标准库；唯一例外是 `tools/qa_audio.py`，可以依赖 mlx-audio。
@@ -100,8 +109,7 @@ python3 -m http.server 8000 -d site
 ## 关于本仓库
 
 这是 **APT 的公开镜像**（私有真源在别处，保留真实域名与部署信息）。
-推送到这里之前会做一次脱敏：真实域名一律写成 `apt.example.com`，
-内网地址用 `100.64.0.x` / `192.168.0.x` 占位。
+推送到这里之前会做一次脱敏：真实域名、内网地址、用户名一律换成占位符。
 
 因此本仓库里的域名、IP、用户名**都不是真值**，照抄部署会失败 ——
 请按 `.env.example` 填自己的值。

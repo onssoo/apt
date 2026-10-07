@@ -313,6 +313,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="只处理前 N 篇，0 = 全部")
     ap.add_argument("--slow", action="store_true", help="额外生成 sents[].s 慢速版")
     ap.add_argument("--skip-validate", action="store_true", help="跳过校验（调试用）")
+    ap.add_argument("--only", default="", help="只处理这些课文 id，逗号分隔，如 L09 或 L09,L10")
     args = ap.parse_args()
 
     load_env()
@@ -338,6 +339,13 @@ def main():
     tts = TTS(key, region)
     data = json.load(open(MATERIALS, encoding="utf-8"))
     lessons = data["lessons"]
+    if args.only:
+        want = [x.strip() for x in args.only.split(",") if x.strip()]
+        have = {l.get("id") for l in data["lessons"]}
+        missing = [x for x in want if x not in have]
+        if missing:
+            raise SystemExit(f"找不到这些课文：{'、'.join(missing)}")
+        lessons = [l for l in data["lessons"] if l.get("id") in want]
     if args.limit:
         lessons = lessons[: args.limit]
 
@@ -383,7 +391,8 @@ def main():
             orig["wa"] = built[lid]["wa"]
     json.dump(raw, open(MATERIALS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
-    print(f"\n本次新合成 {tts.made} 条，复用 {tts.reused} 条")
+    print(f"\n本次处理：{'、'.join(str(l.get('id')) for l in lessons)}")
+    print(f"本次新合成 {tts.made} 条，复用 {tts.reused} 条")
     print(f"本次消耗字符约 {tts.chars}（对账 Azure 门户「指标」页）")
     print("materials.json 已更新（sents 与 wa）。")
 

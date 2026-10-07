@@ -145,7 +145,7 @@ check('未读完课文时下一步是「继续阅读」', /继续读/.test(t2) &
 // 场景 2b：课文都读过、今天还没打卡 → 下一步应该是「去打卡」
 await evaluate(`(function(){
   const s = JSON.parse(localStorage.getItem('aptapp'));
-  s.lessons = {L01:1,L02:1,L03:1,L04:1,L05:1,L06:1,L07:1,L08:1};
+  s.lessons = Object.fromEntries(M.lessons.map(x => [x.id, 1]));   // 不写死，随课文增加自动跟上
   s.words = []; localStorage.setItem('aptapp', JSON.stringify(s)); return 'ok';
 })()`);
 await goto(URL_);
@@ -157,7 +157,7 @@ check('课文读完但未打卡时下一步是「去打卡」', /去打卡/.test
 await evaluate(`(function(){
   const s = JSON.parse(localStorage.getItem('aptapp'));
   const d = new Date(); const k = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  s.logs[k].done = true; s.lessons = {L01:1,L02:1,L03:1,L04:1,L05:1,L06:1,L07:1,L08:1};
+  s.logs[k].done = true; s.lessons = Object.fromEntries(M.lessons.map(x => [x.id, 1]));   // 不写死，随课文增加自动跟上
   localStorage.setItem('aptapp', JSON.stringify(s)); return 'ok';
 })()`);
 await goto(URL_);
@@ -458,6 +458,59 @@ await sweep('#words', '单词页', 'words');
 await sweep('#words', '单词页（总记不住的词）', 'words', async () => { await evaluate(`wFilter='hard'; listWords()`); await sleep(300); });
 await sweep('#review', '复习页', 'review');
 await sweep('#stats', '统计页', 'stats');
+
+// ---------- 场景 14：M8 前端（导入分组 / 来源 / 免责小字 / 新课） ----------
+
+// 14a) 新合并的 L09 在列表里，能打开、有音频
+await evaluate(`localStorage.clear()`);
+await goto(URL_);
+await evaluate(`show('read')`);
+await sleep(500);
+const listTxt = await evaluate(`document.getElementById('read').innerText`);
+check('列表里出现新课 L09', /No café/.test(listTxt), listTxt.slice(0, 120).replace(/\n/g, '|'));
+await evaluate(`openL('L09')`);
+await waitFor("document.querySelector('#read .trb')", 10000);
+await sleep(300);
+const l9 = await evaluate(`document.getElementById('read').innerText`);
+check('L09 能打开且有原文', /Ao sábado de manhã/.test(l9), l9.slice(0, 80).replace(/\n/g, '|'));
+const l9aud = await evaluate(`[...document.querySelectorAll('#read .s')].length`);
+check('L09 的句子都可点（有音频引用）', l9aud >= 10, `${l9aud} 句`);
+
+// 14b) by:"ann" 的课文单独分组 + 来源链接 + 课文页免责小字
+await evaluate(`(function(){
+  M.lessons.unshift({
+    id: 'L99', level: 'A2', min: 5, title: 'Texto importado', zh: '导入的文章', en: 'Imported text',
+    by: 'ann',
+    src: { kind: 'imported', site: 'Público', url: 'https://example.com/artigo' },
+    text: 'Uma frase simples.',
+    sents: [{ p: 0, t: 'Uma frase simples.', en: 'One simple sentence.', zh: '一个简单的句子。', a: '' }],
+    words: [{ pt: 'uma frase', en: 'a sentence', zh: '句子', ex: 'Uma frase simples.' }],
+    qs: [['O que é?', 'Uma frase.']]
+  });
+  curL = null; show('read');
+})()`);
+await sleep(600);
+const mineTxt = await evaluate(`document.getElementById('read').innerText`);
+const mineHtml = await evaluate(`document.getElementById('read').innerHTML`);
+check('出现「我导入的」分组', /我导入的/.test(mineTxt), mineTxt.slice(0, 80).replace(/\n/g, '|'));
+check('导入的课文排在列表最前', mineTxt.indexOf('Texto importado') < mineTxt.indexOf('No café'),
+  `导入在第 ${mineTxt.indexOf('Texto importado')} 位 / 原创在第 ${mineTxt.indexOf('No café')} 位`);
+check('显示来源站名与链接', /来源：/.test(mineTxt) && /Público/.test(mineTxt) && /href="https:\/\/example\.com\/artigo"/.test(mineHtml),
+  (mineTxt.match(/来源[^\n]*/) || [''])[0]);
+
+await evaluate(`openL('L99')`);
+await waitFor("document.querySelector('#read .trb')", 8000);
+await sleep(300);
+const l99 = await evaluate(`document.getElementById('read').innerText`);
+check('导入的课文页有 AI 免责小字', /译文与讲解由 AI 生成，仅供参考/.test(l99),
+  (l99.match(/[^\n]*AI 生成[^\n]*/) || [''])[0]);
+
+// 14c) 原创课文不显示那行小字
+await evaluate(`openL('L09')`);
+await waitFor("document.querySelector('#read .trb')", 8000);
+await sleep(300);
+const l9b = await evaluate(`document.getElementById('read').innerText`);
+check('原创课文不显示免责小字', !/译文与讲解由 AI 生成/.test(l9b), '');
 
 // ---------- 汇总 ----------
 console.log('\n=== 无头 Chrome 渲染验证 ===');

@@ -1545,6 +1545,233 @@
     "audio/88d9c1b173c71f61.mp3",
     "audio/f5f5577eb17b3d43.mp3"
    ]
+  },
+  {
+   "id": "L09",
+   "level": "A2",
+   "min": 7,
+   "title": "No café",
+   "zh": "在咖啡馆",
+   "en": "At the café",
+   "tags": [
+    "Macau",
+    "café"
+   ],
+   "by": "dad",
+   "text": "Ao sábado de manhã, a Mei vai a um café perto da universidade. Senta-se junto à janela e espera pelo empregado.\n— Bom dia! O que deseja?\n— Queria um café com leite e um pão com manteiga, se faz favor.\n— Mais alguma coisa?\n— Não, obrigada. Quanto custa?\n— São vinte e cinco patacas.\nEnquanto come, a Mei revê os apontamentos da aula de português. Depois pede a conta e volta para casa.\nÀs dez horas tem um compromisso, por isso não fica muito tempo no café.",
+   "note": "反身动词（verbos reflexivos / reflexive verbs）：Senta-se junto à janela —— 欧葡把代词放在动词后面，用连字符连接；否定句才前置（Não se senta）。礼貌请求：Queria… 用的是未完成过去时（pretérito imperfeito），比 Quero 客气，点单时最常用。缩合介词（contração / contraction）：junto a + a janela = junto à janela（a + a = à）；ao sábado 里的 ao 是 a + o，表示「每逢周六」。",
+   "sents": [
+    {
+     "p": 0,
+     "t": "Ao sábado de manhã, a Mei vai a um café perto da universidade.",
+     "en": "On Saturday morning, Mei goes to a café near the university.",
+     "zh": "周六早上，Mei去大学附近的一家咖啡馆。",
+     "speaker": "main",
+     "a": "audio/40dfc46bd714aec7.mp3"
+    },
+    {
+     "p": 0,
+     "t": "Senta-se junto à janela e espera pelo empregado.",
+     "en": "She sits down by the window and waits for the waiter.",
+     "zh": "她在窗边坐下，等服务员过来。",
+     "speaker": "main",
+     "a": "audio/446cbf6c21d49044.mp3"
+    },
+    {
+     "p": 1,
+     "t": "— Bom dia!",
+     "sp": "b",
+     "en": "Good morning!",
+     "zh": "早上好！",
+     "speaker": "second",
+     "a": "audio/2d6aa9b054a9d6f1.mp3"
+    },
+    {
+     "p": 1,
+     "t": "O que deseja?",
+     "sp": "b",
+     "en": "What would you like?",
+     "zh": "您想要点什么？",
+     "speaker": "second",
+     "a": "audio/34b125d6838d735f.mp3"
+    },
+    {
+     "p": 2,
+     "t": "— Queria um café com leite e um pão com manteiga, se faz favor.",
+     "en": "I'd like a white coffee and some bread with butter, please.",
+     "zh": "我想要一杯牛奶咖啡和一个黄油面包，麻烦您。",
+     "speaker": "main",
+     "a": "audio/3fe1181fa708f1f0.mp3"
+    },
+    {
+     "p": 3,
+     "t": "— Mais alguma coisa?",
+     "sp": "b",
+     "en": "Anything else?",
+     "zh": "还要别的吗？",
+     "speaker": "second",
+     "a": "audio/b26ffde01dbf80b0.mp3"
+    },
+    {
+     "p": 4,
+     "t": "— Não, obrigada.",
+     "en": "No, thank you.",
+     "zh": "不用了，谢谢。",
+     "speaker": "main",
+     "a": "audio/0dfc462ab65e230e.mp3"
+    },
+    {
+     "p": 4,
+     "t": "Quanto custa?",
+     "en": "How much is it?",
+     "zh": "多少钱？",
+     "speaker": "main",
+     "a": "audio/210185b110972d7b.mp3"
+    },
+    {
+     "p": 5,
+     "t": "— São vinte e cinco patacas.",
+     "sp": "b",
+     "en": "That's twenty-five patacas.",
+     "zh": "二十五澳门元。",
+     "speaker": "second",
+     "a": "audio/b9a7dcc8927096c8.mp3"
+    },
+    {
+     "p": 6,
+     "t": "Enquanto come, a Mei revê os apontamentos da aula de português.",
+     "en": "While she eats, Mei reviews her Portuguese class notes.",
+     "zh": "吃东西的时候，Mei复习葡语课的笔记。",
+     "speaker": "main",
+     "a": "audio/94598b3061fb11a7.mp3"
+    },
+    {
+     "p": 6,
+     "t": "Depois pede a conta e volta para casa.",
+     "en": "Then she asks for the bill and goes back home.",
+     "zh": "然后她结账回家。",
+     "speaker": "main",
+     "a": "audio/ea3f006ca7a52fdf.mp3"
+    },
+    {
+     "p": 7,
+     "t": "Às dez horas tem um compromisso, por isso não fica muito tempo no café.",
+     "en": "She has an appointment at ten, so she doesn't stay long at the café.",
+     "zh": "十点她有个约，所以不会在咖啡馆待太久。",
+     "speaker": "main",
+     "a": "audio/771cef64f96cdcc4.mp3"
+    }
+   ],
+   "words": [
+    {
+     "pt": "o café",
+     "en": "coffee; café",
+     "zh": "咖啡；咖啡馆",
+     "ex": "Ao sábado de manhã, a Mei vai a um café perto da universidade."
+    },
+    {
+     "pt": "o empregado",
+     "en": "waiter, employee",
+     "zh": "服务员；雇员",
+     "ex": "Senta-se junto à janela e espera pelo empregado."
+    },
+    {
+     "pt": "desejar",
+     "en": "to wish, to want (polite)",
+     "zh": "想要（礼貌说法）",
+     "ex": "O que deseja?"
+    },
+    {
+     "pt": "o pão",
+     "en": "bread",
+     "zh": "面包",
+     "ex": "— Queria um café com leite e um pão com manteiga, se faz favor."
+    },
+    {
+     "pt": "a manteiga",
+     "en": "butter",
+     "zh": "黄油",
+     "ex": "— Queria um café com leite e um pão com manteiga, se faz favor."
+    },
+    {
+     "pt": "sentar-se",
+     "en": "to sit down",
+     "zh": "坐下",
+     "ex": "Senta-se junto à janela e espera pelo empregado."
+    },
+    {
+     "pt": "junto a",
+     "en": "next to, beside",
+     "zh": "在……旁边",
+     "ex": "Senta-se junto à janela e espera pelo empregado."
+    },
+    {
+     "pt": "a janela",
+     "en": "window",
+     "zh": "窗户",
+     "ex": "Senta-se junto à janela e espera pelo empregado."
+    },
+    {
+     "pt": "enquanto",
+     "en": "while",
+     "zh": "当……的时候",
+     "ex": "Enquanto come, a Mei revê os apontamentos da aula de português."
+    },
+    {
+     "pt": "os apontamentos",
+     "en": "notes (class notes)",
+     "zh": "笔记",
+     "ex": "Enquanto come, a Mei revê os apontamentos da aula de português."
+    },
+    {
+     "pt": "rever",
+     "en": "to review, to go over",
+     "zh": "复习，重温",
+     "ex": "Enquanto come, a Mei revê os apontamentos da aula de português."
+    },
+    {
+     "pt": "a conta",
+     "en": "bill, check",
+     "zh": "账单",
+     "ex": "Depois pede a conta e volta para casa."
+    },
+    {
+     "pt": "o compromisso",
+     "en": "appointment, engagement",
+     "zh": "约会，约定",
+     "ex": "Às dez horas tem um compromisso, por isso não fica muito tempo no café.",
+     "ff": "≠ compromise（妥协）。是「约定、承诺」；妥协是 o acordo / ceder"
+    }
+   ],
+   "qs": [
+    [
+     "Onde vai a Mei ao sábado de manhã?",
+     "Vai a um café perto da universidade."
+    ],
+    [
+     "O que pede a Mei?",
+     "Pede um café com leite e um pão com manteiga."
+    ],
+    [
+     "O que faz a Mei enquanto come?",
+     "Revê os apontamentos da aula de português."
+    ]
+   ],
+   "wa": [
+    "audio/18a6b83493cafe81.mp3",
+    "audio/34be892f1c273bef.mp3",
+    "audio/6289e06438387547.mp3",
+    "audio/a34eb80b08da025c.mp3",
+    "audio/5e1b120ce6a1f532.mp3",
+    "audio/1397edc4e0388fca.mp3",
+    "audio/96ab5e703d0befa0.mp3",
+    "audio/68edd464583241e5.mp3",
+    "audio/574030bc8d095d1e.mp3",
+    "audio/5fa0795923e0b3ff.mp3",
+    "audio/0b7a14c7253f6e8e.mp3",
+    "audio/f30ffdc02d2d040a.mp3",
+    "audio/4ea3921330e0704d.mp3"
+   ]
   }
  ]
 }
