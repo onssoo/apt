@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>清除 APT 缓存</title>
+<style>
+body{margin:0;font-family:-apple-system,"PingFang SC",sans-serif;background:#f5f6f8;color:#222;
+ padding:24px;line-height:1.6}
+main{max-width:520px;margin:auto}
+h1{font-size:20px}
+.card{background:#fff;border-radius:12px;padding:16px;margin:14px 0}
+button{font-size:17px;padding:14px 18px;border:0;border-radius:10px;background:#c00;color:#fff;
+ width:100%;margin:6px 0;min-height:48px}
+button.g{background:#8882;color:#222}
+.mu{color:#666;font-size:14px;line-height:1.6}
+.ok{color:#0a7d28;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<h1>清除 APT 缓存</h1>
+<p class="mu">清掉旧 Service Worker 存下的残缺音频缓存。清完会自动跳回 App。</p>
+
+<div class="card">
+<button onclick="go()">清缓存并回到 App</button>
+<button class="g" onclick="unreg()">只注销 Service Worker</button>
+</div>
+
+<div class="card" id="log"><p class="mu">点上面的按钮开始。</p></div>
+
+<p class="mu">若按钮无效，请手动操作：Safari 底部「分享」→「清除历史记录与网站数据」。</p>
+</main>
+<script>
+function show(t, cls) {
+  const l = document.getElementById('log');
+  l.innerHTML = '<p class="' + (cls||'mu') + '">' + t + '</p>';
+}
+async function unreg() {
+  try {
+    const rs = await navigator.serviceWorker.getRegistrations();
+    for (const r of rs) await r.unregister();
+    show('已注销 ' + rs.length + ' 个 Service Worker', 'ok');
+  } catch (e) { show('注销失败：' + e.message); }
+}
+async function go() {
+  await unreg();
+  if (window.caches) {
+    try {
+      const ks = await caches.keys();
+      for (const k of ks) await caches.delete(k);
+      show('已清除 ' + ks.length + ' 个缓存', 'ok');
+    } catch (e) {}
+  }
+  // 跳回 App 并强制绕过 HTTP 缓存，确保拿到最新 index.html
+  show('完成，正在回到 App…', 'ok');
+  setTimeout(() => {
+    location.replace('/?t=' + Date.now());
+  }, 900);
+}
+</script>
+</body>
+</html>

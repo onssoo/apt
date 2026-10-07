@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
 <title>APT</title>
+<!-- build 2026-10-07-11:53 -->
 <style>
 :root{
   --c:#00843D; --bg:#f6f7f9; --card:#fff; --t:#222; --mu:#888;
@@ -55,8 +56,20 @@ progress{width:100%;height:10px;accent-color:var(--c)}
 .txt p{font-size:19px;line-height:1.75;margin:0 0 12px}
 .s{border-radius:4px;transition:background .2s;padding:1px 0}
 .s.hl{background:#00843D33}
+/* 逐句译文：点「译」展开，不再依赖 iOS 长按 */
+.trb{font-size:13px;padding:2px 8px;min-height:0;line-height:1.5;margin:0 2px;background:transparent;color:var(--mu);border:1px solid var(--bd);border-radius:10px;vertical-align:middle}
+.trb.on{background:var(--c);color:#fff;border-color:var(--c)}
+.str{font-size:15px;line-height:1.5;color:var(--mu);margin:4px 0 4px 8px}
 .lv{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;background:#00843D22;
  color:var(--c);margin-right:6px}
+.topbar{display:flex;align-items:center;gap:10px}
+.topbar .tl{flex:1}
+.topbar .tb{text-align:center;min-width:56px}
+.topbar .tb b{font-size:22px;display:block}
+.pg{display:flex;align-items:center;gap:8px;margin:6px 0}
+.pg span{min-width:56px}
+.pg progress{flex:1}
+.pg b{min-width:64px;text-align:right;font-size:15px}
 .seg{display:flex;gap:6px;margin-bottom:12px}
 .seg button{flex:1;min-height:44px}
 .ok{color:var(--ok)}.ac{color:var(--warn);font-weight:600}.no{color:var(--bad);text-decoration:underline}
@@ -98,6 +111,7 @@ summary{font-weight:600;min-height:32px;cursor:pointer}
  <button data-t="review" onclick="show('review')">复习</button>
  <button data-t="stats" onclick="show('stats')">统计</button>
 </nav>
+<audio id="au" preload="auto"></audio>
 <div id="toast" class="toast"></div>
 <script src="logic.js"></script>
 <script>
@@ -121,8 +135,10 @@ function load() {
       if (old) { d = JSON.parse(old); }
     } catch (e) {}
   }
-  const m = L.migrate(d);
-  D = m || { words: [], logs: {}, lessons: {}, set: {}, del: [], seq: 0 };
+  // 必须是 migrate({}) 而不是 migrate(null)：后者直接返回 null，
+  // 而兜底对象的 set 是空的，默认值（goalW / goalMin / weekGoal）全部丢失，
+  // 首屏就会显示「本周 0/undefined」「阅读 0 / undefined 分钟」。
+  D = L.migrate(d || {});
   // 未做过的赋值：默认值只在 migrate 里给，这里不覆盖
   save();
 }
@@ -165,114 +181,55 @@ function esc(s) {
 // 渲染 id 到 onclick：加引号并转义（M2-6）
 const jid = id => JSON.stringify(String(id));
 
-function toast(msg) {
+function toast(msg, ms) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('on');
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove('on'), 900);
+  toast._t = setTimeout(() => t.classList.remove('on'), ms || 900);
 }
 
 /* ---------- 发音引擎 ---------- */
-const A = new Audio();
-// 变速播放时保持音高不变（iOS 支持 preservesPitch）
-A.preservesPitch = true;
-A.mozPreservesPitch = true;
-const BL = new Map();     // src -> objectURL
 let rate = 1;
 let gen = 0;              // 播放代号，避免竞态
 const spk = t => t.replace(/…/g, ' ').replace(/\s+/g, ' ').trim();
 
-/* iOS Safari：没有用户手势触发的 play() 会被拒绝。
-   首次触摸（或点击）时用 0.1 秒静音音频解锁。
-   ⚠️ 必须是**真实**音频流：早先用的 1 帧 WAV 只有 44 字节 header、
-      0 帧数据，iOS 拿不到音频，解锁完全无效。现在是 8000Hz / 800 帧 /
-      1644 字节的真实静音。
-   touchend 与 click 都监听，因为桌面与 iOS 派发的事件不同。 */
-let unlocked = false;
-function unlock() {
-  if (unlocked) return;
-  unlocked = true;
-  A.src = 'data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-  const p = A.play();
-  if (p && p.catch) p.catch(() => {});
-  A.pause();
-}
-document.addEventListener('touchend', unlock, { once: true });
-document.addEventListener('click', unlock, { once: true });
-
-async function load1(src) {
-  if (BL.has(src)) return BL.get(src);
-  const r = await fetch(src);
-  if (!r.ok) throw new Error(r.status);
-  const u = URL.createObjectURL(await r.blob());
-  BL.set(src, u);
-  return u;
-}
-const preload = arr => (arr || []).forEach(s => { if (s) load1(s).catch(() => {}); });
-
-/** 系统语音兜底 */
-function speak(t, r, cb) {
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(L.say(t));
-    u.lang = D.set.voice;
-    u.rate = r;
-    if (cb) u.onend = cb;
-    speechSynthesis.speak(u);
-  } catch (e) {}
-}
-/**
- * 播放：优先音频文件，失败退回系统语音。
- * 句子与单词共用本函数；调用方决定传不传 src。
- */
-/**
- * 播放。**关键约束**：A.play() 必须落在用户手势的同步调用栈里。
+/* 音频播放：用页面里那个原生 <audio> 元素。
  *
- * 早先的实现是 `async` + `await load1(src)`（fetch 转blob URL），
- * fetch 会把 play() 推到微任务，iOS Safari 认为已脱离用户手势而拒绝播放。
- * 现在改为：src 直接用相对路径，同步赋给 A.src 后立即 play()，
- * 不经过任何 await。代价是无法在内存里缓存 blob，
- * 但浏览器 HTTP 缓存与 Service Worker 已覆盖这个需求。
+ * 不做任何花活：不new Audio()、不 fetch 转blob、不设playbackRate、
+ * 不碰 speechSynthesis、不用 unlock。原生标签由浏览器自己管，
+ * 是唯一在iOS/Android/桌面都可靠的方式。
+ */
+
+/* 关于系统语音（speechSynthesis）：**已彻底移除**。
+ * 实测在无葡语语音包的设备上不可用，而且一旦调用 speechSynthesis，
+ * 整页媒体会话会异常、连 <audio>.play() 都被拒 —— 代价远大于收益。
+ * 所以设置页里那个「备用发音」选项和启动时的下载提示都删掉了，
+ * 发音只有两级：预生成音频 → /api/tts 代理。 */
+
+/**
+ * 播放预生成的 MP3：src 直接给原生 <audio> 的 src，然后 play()。
+ * src 是 materials.json 里的相对路径，如 audio/xxxx.mp3。
  */
 function play(src, text, cb, r) {
-  const rr = r || rate;
-  unlock();                 // 确保已通过用户手势解锁
-  A.pause();
-  try { speechSynthesis.cancel(); } catch (e) {}
-  A.onended = null;
-  if (!src) { speak(text, .9 * rr, cb); return; }
-
-  const start = (url) => {
-    try {
-      A.src = url;                    // 同步赋值，调用点保证在用户手势栈内
-      A.defaultPlaybackRate = rr;
-      A.playbackRate = rr;
-      A.preservesPitch = true;
-      A.onended = cb || null;
-      const p = A.play();
-      // Safari 首次 play() 常返回被拒绝的 promise，静默重试一次
-      if (p && p.catch) p.catch(() => { try { A.play(); } catch (e) {} });
-    } catch (e) {
-      speak(text, .9 * rr, cb);       // 兜底到系统语音
-    }
-  };
-
-  // 预加载过的音频已在内存：直接用 blob URL，省一次网络往返
-  const u = BL.get(src);
-  if (u) { start(u); return; }
-
-  // 未预加载：直接用相对路径同步播放（关键：不能 await 任何东西），
-  // 同时后台把音频 fetch 下来转成 blob，供下次点击秒开。
-  start(src);
-  load1(src).then(blobUrl => {
-    BL.set(src, blobUrl);
-  }).catch(() => {});
+  if (!src) return;
+  const el = $('au');
+  el.src = src;
+  // iOS 每次换 src 都会把 playbackRate 重置回 defaultPlaybackRate，
+  // 只设一个的话 0.75x 会悄悄失效。两个一起设。
+  const sp = r || rate;
+  el.defaultPlaybackRate = sp;
+  el.playbackRate = sp;
+  el.onended = cb || null;
+  var pr = el.play();
+  if (pr && pr.catch) pr.catch(function () {});
 }
+
 function stopAll() {
   gen++;
-  A.pause();
-  try { speechSynthesis.cancel(); } catch (e) {}
+  try { $('au').pause(); } catch (e) {}
+  // 这里以前还会调一次 speechSynthesis.cancel()。系统语音整条路径已移除，
+  // 就不要再碰 speechSynthesis —— 上一轮的 iOS 故障正是被这个调用触发的。
   markHl(-1);
 }
 function markHl(i) {
@@ -299,9 +256,9 @@ async function fetchTTS(text) {
 function playWord(w) {
   const text = spk(w.pt || '');
   if (w.a) { play(w.a, w.pt); return; }
-  if (!text) { speak(w.pt, .9); return; }
-  // 代理合成是异步的：先尝试，失败自动退回系统语音
-  fetchTTS(text).then(u => play(u, w.pt)).catch(() => speak(w.pt, .9));
+  if (!text) return;                                   // 空词不发声
+  // 代理合成是异步的：失败就安静，不牵连其他功能
+  fetchTTS(text).then(u => play(u, w.pt)).catch(() => {});
 }
 
 /* ---------- 课文数据 ---------- */
@@ -309,13 +266,77 @@ let M = null;
 let curL = null;
 let mode = 'read';
 let si = 0;
-let showZh = false;
 let showTr = 'zh';        // 全文翻译当前语言
-let hideZh = new Set();   // 长按句子时显示中文的句子
-fetch('materials.json').then(r => r.json()).then(m => {
-  M = m;
-  if (tab === 'read') rRead();
-}).catch(() => {});
+let trOpen = new Set();   // 已展开逐句译文的句子下标（改用点按「译」，不再靠长按）
+/* 课文数据加载。
+ * 失败时必须让人看见原因 —— 之前 catch(() => {}) 静默吞掉，
+ * 结果页面永远停在「课文加载中」，看不出是网络、SW 还是 JSON 问题。
+ */
+let loadErr = '';
+
+/** 用课文生词表补齐单词本里缺的英文释义和假朋友标注（M7-6）。
+ *
+ *  她以前加进单词本的词是「复制那一刻」的数据：L02–L08 那时只有中文，
+ *  课文补了英文也不会自动跟过来。这里按 pt 匹配补空字段。
+ *  **box / due / lapse 一律不动** —— 那是她的学习进度，不能被内容更新影响。
+ */
+function backfillFromMaterials() {
+  if (!M || !D.words.length) return 0;
+  const idx = {};
+  M.lessons.forEach(l => (l.words || []).forEach(w => {
+    const nw = L.normWord(w);
+    if (nw.pt) idx[nw.pt.toLowerCase()] = nw;
+  }));
+  const keys = Object.keys(idx);
+  let n = 0;
+  D.words.forEach(w => {
+    const key = (w.pt || '').toLowerCase();
+    let src = idx[key];
+    if (!src) {
+      const bk = L.base(key);
+      const hit = keys.find(k => L.base(k) === bk);
+      if (hit) src = idx[hit];
+    }
+    if (!src) return;
+    let touched = false;
+    if (!w.en && src.en) { w.en = src.en; touched = true; }
+    if (!w.ff && src.ff) { w.ff = src.ff; touched = true; }
+    if (touched) { w.upd = Date.now(); n++; }
+  });
+  if (n) save();
+  return n;
+}
+
+function loadMaterials() {
+  fetch('materials.json', { cache: 'no-cache' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(m => {
+      if (!m || !m.lessons || !m.lessons.length) throw new Error('数据里没有课文');
+      M = m;
+      loadErr = '';
+      backfillFromMaterials();   // 老单词本补英文/假朋友（不动 box/due/lapse）
+      // 之前只在阅读页重画，今日页的「下一步」永远停在加载中的判断上，误报「今天完成了」
+      render();
+    })
+    .catch(e => {
+      loadErr = e && e.message ? e.message : String(e);
+      // 直接把错误显示在阅读页，别让人干等
+      const el = $('read');
+      if (el && !$('read').classList.contains('hide')) {
+        el.innerHTML = '<div class="card"><h2>课文加载失败</h2>'
+          + '<div class="mu">原因：' + esc(loadErr) + '</div>'
+          + '<p class="mu">如果是第一次打开，请确认已联网。'
+          + '若刚改过代码，在 Safari 底部「分享」→「清除历史记录与网站数据」后再试。</p>'
+          + '<button class="sm" onclick="loadMaterials()">重试</button></div>';
+      } else if (tab === 'today') {
+        render();   // 今日页的「下一步」也要从「正在加载」改成「加载失败 + 重试」
+      }
+    });
+}
+loadMaterials();
 const SS = () => curL.sents || (curL._s || (curL._s = L.splitS(curL.text)));
 
 /* ---------- 标签切换 ---------- */
@@ -329,40 +350,49 @@ function show(t) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   R[t]();
 }
-const S_ = () => L.say;
 
 /* ================================================================
  * 今日页
  * ================================================================ */
+
+/** 第一次有打卡记录的日期（毫秒）。从没用过就返回今天。 */
+function firstLogMs() {
+  const ks = Object.keys(D.logs || {}).sort();
+  return ks.length ? new Date(ks[0] + 'T00:00:00').getTime() : Date.now();
+}
+
 function rToday() {
   const lg = log();
   const m = mins(lg);
   const nDue = dueCount();
   const back = backlog();
-  const isNew = Object.keys(D.logs).length <= 1;
   // 周目标（M5-6）
   const wk = L.weekCount(D.logs);
   const wkGoal = D.set.weekGoal;
   // 备份提醒（M2-2）
-  const needExport = D.set.lastExport &&
-    (Date.now() - D.set.lastExport) / 86400000 > 7;
+  // 之前是 D.set.lastExport && ...：从没导出过的人 lastExport=0 是 falsy，
+  // 提醒永远不出现。没导出过就从「第一次有记录那天」起算。
+  const expSince = D.set.lastExport || firstLogMs();
+  const expDays = Math.floor((Date.now() - expSince) / 86400000);
+  // 「今天不再提醒」按日期记，不能存布尔值 —— 存进 D 里等于永久静音
+  const needExport = expDays > 7 && D.set.exportNagDay !== today();
 
   let h = '';
 
   //备份提醒
-  if (needExport && !D._exportNag) {
-    h += `<div class="warnc">已经 ${Math.floor((Date.now() - D.set.lastExport) / 86400000)} 天没导出备份了。
+  if (needExport) {
+    h += `<div class="warnc">已经 ${expDays} 天没导出备份了。
       建议每周导出一次，存到 iCloud。
-      <div style="margin-top:8px"><button class="sm" onclick="exportNow();D._exportNag=1;render()">立即导出</button>
-      <button class="sm g" onclick="D._exportNag=1;render()">今天不再提醒</button></div></div>`;
+      <div style="margin-top:8px"><button class="sm" onclick="exportNow();D.set.exportNagDay=today();save();render()">立即导出</button>
+      <button class="sm g" onclick="D.set.exportNagDay=today();save();render()">今天不再提醒</button></div></div>`;
   }
 
-  // 状态卡
-  h += `<div class="card row">
-    <div><div class="mu">${today()}</div><h2>Olá! Bom estudo!</h2>
-      <div class="week">本周 <b>${wk}/${wkGoal}</b></div></div>
-    <div style="text-align:center"><div class="big">${L.streak(D.logs)}</div>
-      <div class="mu">连续打卡(天)</div></div></div>`;
+  // 顶栏：一行看完「今天 / 连续几天 / 本周进度」，不再是一张大白卡
+  const st = L.streak(D.logs);
+  h += `<div class="card topbar">
+    <div class="tl"><div class="mu">${today()}</div><h2>Olá! Bom estudo!</h2></div>
+    <div class="tb"><b>${st}</b><span class="mu">连续天</span></div>
+    <div class="tb"><b>${wk}/${wkGoal}</b><span class="mu">本周</span></div></div>`;
 
   // 下一步卡片（M5-3）：三态固定顺序
   let nx = '', nxBtn = '', nxAct = '';
@@ -372,12 +402,20 @@ function rToday() {
   } else if (back) {
     nx = '待复习有点积压了，今天先复习'; nxBtn = '开始复习'; nxAct = "show('review')";
   } else {
-    const un = (M && M.lessons || []).find(l => !D.lessons[l.id]);
-    if (un) { nx = '继续读：' + un.title; nxBtn = '继续阅读'; nxAct = `openL('${un.id}')`; }
-    else { nx = '今天完成了，明天见'; nxBtn = '去打卡'; nxAct = 'checkin()'; }
+    // 课文还没加载完时不能当成「全部读完了」——首屏会误报「今天完成了」
+    if (!M) {
+      nx = loadErr ? '课文加载失败' : '正在加载课文…';
+      nxBtn = loadErr ? '重试' : '稍等'; nxAct = loadErr ? 'loadMaterials()' : '';
+    } else {
+      const un = M.lessons.find(l => !D.lessons[l.id]);
+      if (un) { nx = '继续读：' + un.title; nxBtn = '继续阅读'; nxAct = `openL('${un.id}')`; }
+      else if (lg.done) { nx = '今天已完成，明天见'; nxBtn = '已打卡 ✓'; nxAct = ''; }
+      else { nx = '今天的课文都读完了'; nxBtn = '去打卡'; nxAct = 'checkin()'; }
+    }
   }
   h += `<div class="next"><div class="t">${esc(nx)}</div>
-    <button class="b" onclick="${nxAct}">${nxBtn}</button></div>`;
+    ${nxAct ? `<button class="b" onclick="${nxAct}">${nxBtn}</button>`
+            : `<button class="b" disabled>${nxBtn}</button>`}</div>`;
 
   // 积压提示
   if (back) {
@@ -385,33 +423,35 @@ function rToday() {
       复习一轮（${D.set.revBatch} 个）就能打卡。</div>`;
   }
 
-  // 快速听写入口（M5-7）
-  if (hasRead()) {
-    h += `<div class="card"><div class="row"><h2>快速听写</h2>
-      <button class="sm" onclick="startQuickDict()">开始 5 句</button></div>
-      <p class="mu">从你读过的课文里随机抽 5 句，约 3 分钟。</p></div>`;
-  }
-
-  // 任务卡
+  // 今日进度：只留三条进度线，其余细节能省就省
   const needNew = !back;
-  h += `<div class="card"><h2>今日任务</h2>
-    <div class="mu">阅读 ${m} / ${D.set.goalMin} 分钟</div>
-    <progress max="${D.set.goalMin}" value="${m}"></progress>
-    <div class="mu">新单词 ${lg.newW} / ${needNew ? D.set.goalW : 0}${needNew ? '' : '（积压，今天不加新词）'}</div>
-    <progress max="${D.set.goalW}" value="${Math.min(lg.newW, D.set.goalW)}"></progress>
-    <div class="mu">今日复习 ${lg.rev} 次 · 待复习 ${nDue} 个 · 跟读 ${lg.sh || 0} 句 · 听写 ${lg.dc || 0} 句</div>
-    <p>${lg.done ? '<b style="color:var(--c)">今日已打卡 ✓</b>' : '<button onclick="checkin()">完成今日打卡</button>'}</p>
+  const extra = [];
+  if ((lg.sh | 0) > 0) extra.push(`跟读 ${lg.sh} 句`);
+  if ((lg.dc | 0) > 0) extra.push(`听写 ${lg.dc} 句`);
+  if ((lg.rev | 0) > 0) extra.push(`复习 ${lg.rev} 次`);
+  h += `<div class="card"><h2>今日进度</h2>
+    <div class="pg"><span class="mu">阅读</span><progress max="${D.set.goalMin}" value="${m}"></progress><b>${m}/${D.set.goalMin} 分</b></div>
+    <div class="pg"><span class="mu">新词</span><progress max="${D.set.goalW}" value="${Math.min(lg.newW, D.set.goalW)}"></progress>
+      <b>${lg.newW}/${needNew ? D.set.goalW : 0}</b></div>
+    ${nDue > 0 ? `<div class="pg"><span class="mu">待复习</span><progress max="${Math.max(nDue, D.set.revBatch)}" value="0"></progress><b>${nDue} 个</b></div>` : ''}
+    ${extra.length ? `<div class="mu" style="margin-top:6px">今天还做了：${extra.join(' · ')}</div>` : ''}
+    <p style="margin-top:10px">${lg.done ? '<b style="color:var(--c)">今日已打卡 ✓</b>'
+      : `<button onclick="checkin()">完成今日打卡</button>`}</p>
     </div>`;
 
-  // 阅读记录
-  h += `<div class="card"><h2>记录其他阅读</h2>
+  // 折叠区：快速听写 + 记录其他阅读
+  if (hasRead()) {
+    h += `<details class="card"><summary>快速听写（从读过的课文抽 5 句，约 3 分钟）</summary>
+      <button style="margin-top:10px" onclick="startQuickDict()">开始 5 句</button></details>`;
+  }
+  h += `<details class="card"><summary>记录其他阅读</summary>
     <input id="rt" placeholder="读了什么？（课本 / 新闻 / 小说）">
     <input id="rm" type="number" inputmode="numeric" placeholder="分钟数">
     <textarea id="rn" rows="3" placeholder="笔记、摘抄或一句话感想（试试用葡语写）"></textarea>
     <button onclick="addRead()">保存</button>
     ${lg.read.map(r => `<div class="w"><b>${esc(r.title)}</b>
       <span class="mu">${esc(r.min)} 分钟</span><div class="ex">${esc(r.note)}</div></div>`).join('')}
-    </div>`;
+    </details>`;
 
   $('today').innerHTML = h;
 }
@@ -423,7 +463,6 @@ function checkin() {
   const m = mins(lg);
   const back = backlog();
   // 积压时打卡条件改为「完成一轮复习」（M5-2）
-  const needReview = back;
   const okGoal = back || (m >= D.set.goalMin && lg.newW >= D.set.goalW);
   if (!okGoal && !confirm('还没达到今日目标，确定打卡吗？')) return;
   lg.done = true;
@@ -434,13 +473,13 @@ function checkin() {
 function addRead() {
   const t = $('rt').value.trim();
   const m = +$('rm').value;
-  if (!t || !m) return alert('请填写标题和分钟数');
+  if (!t || !m) return toast('请填写标题和分钟数');
   log().read.push({ title: t, min: m, note: $('rn').value.trim() });
   save();
   rToday();
 }
 function exportNow() {
-  D.set.lastExport = Date.now();
+  // 时间戳由 doExport 在真正导出之后才写：她在分享面板上取消，不该算「已导出」
   doExport();
 }
 
@@ -450,7 +489,10 @@ function exportNow() {
 function rRead() {
   const el = $('read');
   if (!M) {
-    el.innerHTML = '<div class="card mu">课文加载中…（第一次打开需要联网）</div>';
+    el.innerHTML = loadErr
+      ? '<div class="card"><h2>课文加载失败</h2><div class="mu">原因：' + esc(loadErr)
+        + '</div><button class="sm" onclick="loadMaterials()">重试</button></div>'
+      : '<div class="card mu">课文加载中…（第一次打开需要联网）</div>';
     return;
   }
   if (!curL) {
@@ -472,13 +514,17 @@ function rRead() {
     <button class="g sm" onclick="stopAll();curL=null;rRead();scrollTo(0,0)">‹ 课文列表</button>
     <button class="g sm" onclick="rate=rate===1?.75:1;rRead()">速度 ${rate === 1 ? '1x' : '0.75x'}</button>
     <button class="g sm" onclick="dlOne(this)">缓存本课</button>
+    ${mode === 'read' ? `<button class="g sm" onclick="toggleTrAll()">译文${trOpen.size ? '全隐' : '全显'}</button>` : ''}
   </div>
   <div class="seg">${[['read', '阅读'], ['shadow', '跟读'], ['dict', '听写']]
     .map(([k, n]) => `<button class="${mode === k ? '' : 'g'}" onclick="setMode('${k}')">${n}</button>`).join('')}</div>`;
 
-  h += mode === 'read' ? vRead(curL, S)
-     : mode === 'shadow' ? vShadow(S)
-     : vDict(S, null);
+  if (mode === 'dict') {
+    ensureLessonDict();          // 听写用自己的句子列表，不借用 curL 的实时状态
+    h += vDict();
+  } else {
+    h += mode === 'read' ? vRead(curL, S) : vShadow(S);
+  }
   el.innerHTML = h;
 }
 
@@ -492,8 +538,13 @@ function glossHtml(w) {
 }
 function ffHtml(w) {
   const ff = (w && w.ff) || '';
-  if (!ff) return '';
-  return `<span class="ff" onclick="event.stopPropagation();alert('假朋友\\n\\n${esc(ff).replace(/\n/g, '\\n')}')">⚠ 假朋友</span>`;
+  return ff ? '<span class="ff">⚠ 假朋友</span>' : '';
+}
+/** 假朋友的说明。以前藏在 alert 里（iPhone 上还得点一下），现在直接写在词下面。
+ *  前缀不重复写「假朋友」—— 词旁边已经有橙色标签了。 */
+function ffNote(w) {
+  const ff = (w && w.ff) || '';
+  return ff ? `<div class="warnc" style="margin-top:6px">${esc(ff)}</div>` : '';
 }
 
 function vRead(l, S) {
@@ -501,14 +552,21 @@ function vRead(l, S) {
   const P = [];
   S.forEach((s, i) => (P[s.p] = P[s.p] || []).push(i));
   const body = P.filter(Boolean).map(idxs => {
-    const sp = idxs.map(i => `<span class="s" data-i="${i}" onclick="playS(${i})"
-      oncontextmenu="event.preventDefault();toggleZh(${i})">${esc(S[i].t)}</span>`).join(' ');
-    const zh = idxs.filter(i => hideZh.has(i))
-      .map(i => `<div class="mu" style="margin:4px 0 4px 8px">${esc(S[i].zh || S[i].en || '')}</div>`).join('');
-    return `<p>${sp}${zh}</p>`;
+    const sp = idxs.map(i => {
+      const hasTr = !!(S[i].en || S[i].zh);
+      return `<span class="s" data-i="${i}" onclick="playS(${i})">${esc(S[i].t)}</span>`
+        + (hasTr ? `<button class="trb${trOpen.has(i) ? ' on' : ''}"
+             onclick="event.stopPropagation();toggleTr(${i})" aria-label="译文">译</button>` : '');
+    }).join(' ');
+    const trs = idxs.filter(i => trOpen.has(i) && (S[i].zh || S[i].en))
+      .map(i => `<div class="str">${strHtml(S[i])}</div>`).join('');
+    return `<p>${sp}${trs}</p>`;
   }).join('');
 
-  const tr = L.normTrans(l.trans);
+  // 全文翻译：课文里没写 trans 时，按段落把 sents 的逐句译文拼出来（M7-6）。
+  // 这样逐句译文和全文翻译永远是同一份数据，不会对不上。
+  let tr = L.normTrans(l.trans);
+  if (!tr.en && !tr.zh) tr = L.transFromSents(S);
   let trHtml = '';
   if (tr.en || tr.zh) {
     trHtml = `<div class="row" style="margin-top:10px">
@@ -526,7 +584,7 @@ function vRead(l, S) {
       <button class="sm" onclick="playS(0,true)">▶ 朗读全文</button>
       <button class="g sm" onclick="stopAll()">■ 停止</button></div>
     <div class="txt" style="margin-top:14px">${body}</div>
-    <p class="mu">点句子单独听 · 长按句子看这句的中文</p>
+    <p class="mu">点句子单独听 · 点句子后面的「译」看这句的译文（顶部有「译文全显」）</p>
     ${trHtml}</div>
 
   ${l.note ? `<div class="card"><h2>语法点</h2><div style="line-height:1.75;font-size:15px">${esc(l.note)}</div></div>` : ''}
@@ -539,7 +597,7 @@ function vRead(l, S) {
         <b style="font-size:18px">${esc(nw.pt)}</b>${ffHtml(nw)}
         <span><button class="g sm" onclick="event.stopPropagation();playWord({pt:'',a:curL.wa&&curL.wa[i]})">▶</button>
         ${has(nw.pt) ? '<span class="mu">已加入</span>' : `<button class="sm" onclick="event.stopPropagation();addLW(${i})">＋</button>`}</span>
-      </div>${glossHtml(nw)}${nw.ex ? `<div class="ex">${esc(nw.ex)}</div>` : ''}</div>`;
+      </div>${glossHtml(nw)}${ffNote(nw)}${nw.ex ? `<div class="ex">${esc(nw.ex)}</div>` : ''}</div>`;
     }).join('')}</div>
 
   <div class="card"><h2>理解问题</h2>
@@ -554,25 +612,48 @@ function vRead(l, S) {
 }
 
 function openL(id) {
+  if (!M) return;                    // 课文数据还没到，不能读 M.lessons
   curL = M.lessons.find(l => l.id === id);
   if (!curL) return;
-  mode = 'read'; si = 0; showZh = false; hideZh = new Set();
+  mode = 'read'; si = 0; trOpen = new Set();
   Object.values(recs).forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
   recs = {};
-  preload(SS().map(s => s.a)); preload(curL.wa);
   show('read');
   scrollTo(0, 0);
 }
 function setMode(k) {
   stopAll();
   if (recOn) { try { rec.stop(); } catch (e) {} }
-  mode = k; si = 0; dRes = null; dAns = ''; dPool = null;
+  mode = k; si = 0;
+  if (k === 'dict') {
+    startDict(SS(), 'lesson');   // 每次进入听写都重新出题
+  } else {
+    clearDict();
+  }
   rRead();
   scrollTo(0, 0);
-  if (k === 'dict') playS(0);
+  if (k === 'dict') playDict();
 }
-function toggleZh(i) {
-  if (hideZh.has(i)) hideZh.delete(i); else hideZh.add(i);
+/** 逐句译文按「释义显示」设置渲染：both=英中都有，en=只英文，zh=只中文。 */
+function strHtml(s) {
+  const g = D.set.show || 'both';
+  const en = (s.en || '').trim(), zh = (s.zh || '').trim();
+  let out = '';
+  if (g !== 'zh' && en) out += `<div class="gloss">${esc(en)}</div>`;
+  if (g !== 'en' && zh) out += `<div class="gloss zh">${esc(zh)}</div>`;
+  return out || `<div class="gloss">${esc(en || zh)}</div>`;
+}
+/** 一次显示/隐藏本课全部逐句译文。 */
+function toggleTrAll() {
+  if (trOpen.size) { trOpen = new Set(); } else {
+    const S = SS();
+    trOpen = new Set(S.map((s, i) => (s.en || s.zh) ? i : -1).filter(i => i >= 0));
+  }
+  rRead();
+}
+/** 单句译文：点一下开、再点一下关。iOS 长按会弹选词菜单，不能依赖它。 */
+function toggleTr(i) {
+  if (trOpen.has(i)) trOpen.delete(i); else trOpen.add(i);
   rRead();
 }
 function addLW(i) {
@@ -587,27 +668,31 @@ function addAllL() {
     n += addW(nw.pt, nw.zh, nw.ex, curL.wa && curL.wa[i], nw.en, nw.ff);
   });
   save(); rRead();
-  alert(`加入了 ${n} 个新词`);
+  toast(`加入了 ${n} 个新词`);
 }
 function finishL() {
   const m = +$('lm').value || curL.min;
   log().read.push({ title: curL.title, min: m, note: 'App 课文' });
   D.lessons[curL.id] = today();
   save();
-  alert('已记入今日阅读');
+  toast('已记入今日阅读');
   rRead();
 }
 
 /* ---------- 逐句播放 ---------- */
+/** 播一个句子对象 {t,a,s}。听写和阅读共用，保证两条路径行为一致。 */
+function playSent(s, onEnd) {
+  if (!s) return;
+  // 0.75x 优先用预生成的慢速音频（若有），否则实时改速
+  const src = (rate < 1 && s.s) ? s.s : s.a;
+  play(src, L.say(s.t), onEnd);
+}
 function playS(i, chain) {
   const S = SS();
   if (i >= S.length) { markHl(-1); return; }
   const g = ++gen;
   markHl(i);
-  // 0.75x 优先用预生成的慢速音频（若有），否则实时改速
-  let src = S[i].a;
-  if (rate < 1 && S[i].s) src = S[i].s;
-  play(src, L.say(S[i].t), () => {
+  playSent(S[i], () => {
     if (g !== gen) return;
     chain ? playS(i + 1, true) : markHl(-1);
   });
@@ -659,18 +744,18 @@ async function recToggle() {
     recOn = true;
     rRead();
   } catch (e) {
-    alert('需要麦克风权限：在弹窗中点"允许"，或到 设置 → Safari → 麦克风 里打开');
+    toast('需要麦克风权限：在弹窗中点「允许」，或到 设置 → Safari → 麦克风 里打开', 5000);
   }
 }
 function playMine(cb) {
   const u = recs[recKey(si)];
   if (!u) return;
   gen++;
-  A.pause();
-  try { speechSynthesis.cancel(); } catch (e) {}
-  A.onended = cb || null;
-  A.src = u; A.defaultPlaybackRate = 1; A.playbackRate = 1;
-  A.play().catch(() => {});
+  const el = $('au');
+  el.src = u;
+  el.onended = cb || null;
+  const pr = el.play();
+  if (pr && pr.catch) pr.catch(() => {});
 }
 function compare() {
   const S = SS();
@@ -684,31 +769,50 @@ function go(d) {
   stopAll();
   const n = SS().length;
   if (si + d >= n) {
-    alert('这一课练完了，Muito bem!');
+    toast('这一课练完了，Muito bem!', 2000);
     return setMode('read');
   }
   si = Math.max(0, si + d);
   dRes = null; dAns = '';
   rRead();
-  if (mode === 'dict') playS(si);
+  if (mode === 'dict') playDict();
 }
 
-/* ---------- 听写 ---------- */
-let dRes = null, dAns = '', dPool = null, dIdx = [];
-function vDict(S, pool) {
-  const src = pool || { list: SS().map((_, i) => i) };
-  if (!dPool) { dPool = src; dIdx = src.list.slice(); shuffle(dIdx); }
-  if (dIdx.length === 0) {
+/* ---------- 听写 ----------
+ * 听写永远操作自己的句子列表 dSents（[{t,a,s}]），不借用课文状态。
+ * 之前是 vDict(SS(), dPool)：索引用的是句子池，取的却是当前课文的句子，
+ * 没打开课文时 curL 为空，直接落到「今天复习完成啦」。
+ * dOwner 说明这轮听写是谁开的：'lesson'（课文听写页）或 'quick'（快速听写）。
+ */
+let dRes = null, dAns = '', dSents = null, dIdx = [], dOwner = null;
+
+function startDict(list, owner) {
+  dSents = (list || []).slice();
+  dIdx = dSents.map((_, k) => k);
+  shuffle(dIdx);
+  dRes = null; dAns = '';
+  dOwner = owner || 'lesson';
+}
+function clearDict() {
+  dSents = null; dIdx = []; dRes = null; dAns = ''; dOwner = null;
+}
+/** 课文听写页：没有属于本课的题就重新出题（渲染时不能重置已有进度） */
+function ensureLessonDict() {
+  if (dOwner !== 'lesson' || !dSents) startDict(SS(), 'lesson');
+}
+function playDict() {
+  if (dSents && dIdx.length) playSent(dSents[dIdx[0]]);
+}
+function vDict() {
+  if (!dSents || dIdx.length === 0) {
     return `<div class="card flash"><h2>今天的听写完成了</h2>
       <p class="mu">Muito bem! 明天再来～</p>
-      <div><button class="g" onclick="exitQuickDict()">回到今日</button></div></div>`;
+      <div><button class="g" onclick="exitDict()">回到今日</button></div></div>`;
   }
-  const i = dIdx[0];
-  const s = S[i];
   return `<div class="card">
     <div class="row"><span class="mu">剩余 ${dIdx.length} 句</span>
-      <button class="g sm" onclick="playS(${i})">▶ 再听一遍</button>
-      <button class="g sm" onclick="stopAll();dPool=null;dIdx=[];exitQuickDict()">退出</button></div>
+      <button class="g sm" onclick="playDict()">▶ 再听一遍</button>
+      <button class="g sm" onclick="stopAll();exitDict()">退出</button></div>
     <textarea id="dt" rows="3" placeholder="听到什么就写什么，注意重音符号"
       autocapitalize="off" autocorrect="off" spellcheck="false">${esc(dAns)}</textarea>
     ${dRes ? `<div style="font-size:19px;line-height:1.8">${cmpHtml(dRes)}</div>
@@ -728,10 +832,10 @@ function shuffle(a) {
   return a;
 }
 function checkDict() {
-  const S = SS();
+  if (!dSents || !dIdx.length) return;
   const i = dIdx[0];
   dAns = $('dt').value;
-  const ref = L.say(S[i].t);
+  const ref = L.say(dSents[i].t);
   const r = L.cmpW(dAns, ref);
   // 听写判错：单词本里有的词记lapse（M6/M5-5）
   const bad = [];
@@ -745,20 +849,19 @@ function checkDict() {
   dRes = r;
   const lg = log(); lg.dc = (lg.dc || 0) + 1;
   save();
-  rRead();
+  render();
 }
 function dictNext() {
   if (dIdx.length) dIdx.shift();
   dRes = null; dAns = '';
-  if (dIdx.length) playS(dIdx[0]);
-  rRead();
+  if (dIdx.length) playDict();
+  render();
 }
-function exitQuickDict() {
-  dPool = null; dIdx = [];
-  if (curL && mode === 'dict' && dPool === null) {
-    // 从课文听写退出：回到阅读
-    mode = 'read';
-  }
+function exitDict() {
+  const wasLesson = (dOwner === 'lesson');
+  clearDict();
+  // 从课文听写退出：回到阅读
+  if (wasLesson && mode === 'dict') { mode = 'read'; show('read'); return; }
   show('today');
 }
 function hasRead() {
@@ -766,22 +869,11 @@ function hasRead() {
 }
 function startQuickDict() {
   if (!M) return;
-  const pool = [];
-  M.lessons.forEach(l => {
-    if (!D.lessons[l.id]) return;
-    (l.sents || []).forEach((s, i) => {
-      if (s.a) pool.push({ lid: l.id, i: i });
-    });
-  });
-  if (!pool.length) { alert('还没有可听的课文音频，先去读一篇吧'); return; }
-  shuffle(pool);
-  dPool = pool.slice(0, 5);
-  dIdx = dPool.map((_, k) => k);
-  // 用课文内句子：切到 quick 模式，SS 换成全池
-  quickPool = dPool;
-  mode = 'dict';
+  const pool = L.quickPool(M.lessons, D.lessons, 5);
+  if (!pool.length) { toast('还没有可听的课文音频，先去读一篇吧', 2500); return; }
+  // 直接操作自己的句子列表，不再借用课文状态（M7-1 bug 4）
+  startDict(pool, 'quick');
   show('review');
-  alert('快速听写：从读过的课文里抽 5 句');
 }
 
 /* ================================================================
@@ -840,7 +932,7 @@ function listWords() {
           ${(w.lapse | 0) >= 3 ? `<span class="mu">忘 ${w.lapse} 次</span>` : ''}
           <button class="g sm" onclick="playWord(byId(${jid(w.id)})||{})">▶</button>
           <button class="g sm" onclick="delWord(${jid(w.id)})">删</button></span></div>
-      ${glossHtml(nw)}
+      ${glossHtml(nw)}${ffNote(nw)}
       ${nw.ex ? `<div class="ex">${esc(nw.ex)}</div>` : ''}
       <div class="mu">熟练度 ${w.box | 0}/6 · 下次复习 ${esc(w.due || '-')}</div></div>`;
   }).join('');
@@ -850,9 +942,9 @@ function addWord() {
   const en = $('wen').value.trim();
   const zh = $('wzh').value.trim();
   const ex = $('we').value.trim();
-  if (!pt) return alert('请填写葡语');
-  if (!en && !zh) return alert('英文或中文释义至少填一栏');
-  if (!addW(pt, zh, ex, '', en, '')) return alert('单词本里已经有这个词了');
+  if (!pt) return toast('请填写葡语');
+  if (!en && !zh) return toast('英文或中文释义至少填一栏');
+  if (!addW(pt, zh, ex, '', en, '')) return toast('单词本里已经有这个词了');
   save(); rWords(); $('wp').focus();
 }
 function bulk() {
@@ -864,7 +956,7 @@ function bulk() {
     n += addW(o.pt, o.zh, o.ex, '', o.en, '');
   }
   save(); rWords();
-  alert(`导入了 ${n} 个新词（重复或格式不对的已跳过）`);
+  toast(`导入了 ${n} 个新词（重复或格式不对的已跳过）`, 2500);
 }
 function delWord(id) {
   if (!confirm('删除这个词？')) return;
@@ -893,11 +985,20 @@ function addW(pt, zh, ex, a, en, ff) {
 /* ================================================================
  * 复习页（M5：每轮上限、即时反馈、小结）
  * ================================================================ */
-let Q = [], cur = null, shown = false, batchDone = 0, batchOk = 0, batchTotal = 0;
+let Q = [], cur = null, shown = false, batchOk = 0, batchTotal = 0;
 
 function rReview() {
-  if (curL && mode === 'dict' && dPool) { $('review').innerHTML = vDict(SS(), dPool); return; }
+  if (dOwner === 'quick') { $('review').innerHTML = vDict(); return; }
   if (!cur) {
+    // 新用户词库是空的，说「复习完成啦」会让人以为自己已经做完了
+    if (!D.words.length) {
+      $('review').innerHTML = `<div class="card flash"><h2>单词本还是空的</h2>
+        <p class="mu">先去「阅读」打开一篇课文，把里面的生词加进单词本，
+        这里就有得复习了。</p>
+        <div class="row" style="justify-content:center">
+          <button class="g" onclick="show('read')">去阅读</button></div></div>`;
+      return;
+    }
     $('review').innerHTML = `<div class="card flash"><h2>今天的复习完成啦</h2>
       <p class="mu">Muito bem! 明天再来～</p></div>`;
     return;
@@ -933,8 +1034,7 @@ function next() {
 }
 function roundEnd() {
   const more = L.due(D.words).length;
-  const L_ = log();
-  L_.rev = (L_.rev | 0) + batchTotal;
+  // 复习次数在 ans() 里按「答一题 +1」累计，这里绝不能再加一次 batchTotal
   save();
   cur = null;
   $('review').innerHTML = `<div class="card flash">
@@ -955,7 +1055,6 @@ function ans(ok) {
   cur.due = r.due;
   cur.lapse = r.lapse;        // 只增不减
   cur.upd = Date.now();
-  batchTotal = batchTotal;
   if (ok) {
     batchOk++;
     // 即时反馈：间隔可见（M5-4）
@@ -978,15 +1077,20 @@ function ans(ok) {
 function rStats() {
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth();
-  const first = new Date(y, m, 1).getDay();
+  // 周一开头，和「本周 x/5」的周目标口径一致（原来从周日起，两处对不上）
+  const firstMon = (new Date(y, m, 1).getDay() + 6) % 7;
   const dim = new Date(y, m + 1, 0).getDate();
-  let cells = '日一二三四五六'.split('').map(c => `<div class="mu">${c}</div>`).join('')
-    + '<div></div>'.repeat(first);
+  let cells = '一二三四五六日'.split('').map(c => `<div class="mu">${c}</div>`).join('')
+    + '<div></div>'.repeat(firstMon);
   for (let i = 1; i <= dim; i++) {
     const lg = D.logs[L.day(new Date(y, m, i))];
     cells += `<div class="${lg && lg.done ? 'd' : (lg && (lg.read.length || lg.newW || lg.rev)) ? 'p' : ''}">${i}</div>`;
   }
   const logs = Object.values(D.logs);
+  const expDays = D.set.lastExport ? Math.floor((Date.now() - D.set.lastExport) / 86400000) : -1;
+  const expText = D.set.lastExport
+    ? `上次导出：${new Date(D.set.lastExport).toLocaleDateString('zh-CN')}（${expDays} 天前）`
+    : '从未导出过备份';
   const totMin = logs.reduce((a, l) => a + mins(l), 0);
   const mastered = D.words.filter(w => (w.box | 0) >= L.MASTERED_BOX).length;
   const hard = D.words.filter(w => (w.lapse | 0) >= 3).length;
@@ -1005,45 +1109,62 @@ function rStats() {
   ${hard ? `<div class="warnc">有 ${hard} 个词反复记不住（忘 3 次以上）。
     去单词页点「总记不住的词」专门练。</div>` : ''}
 
-  <div class="card"><h2>设置</h2>
+  <div class="card"><h2>学习设置</h2>
     <label>释义显示</label>
     <select onchange="setShow(this.value)">
       <option value="both"${D.set.show === 'both' ? ' selected' : ''}>英文为主+ 中文（可点开）</option>
       <option value="en"${D.set.show === 'en' ? ' selected' : ''}>只显示英文</option>
       <option value="zh"${D.set.show === 'zh' ? ' selected' : ''}>只显示中文</option>
     </select>
-    <label>备用发音（无音频时用系统语音）</label>
-    <select id="sv" onchange="D.set.voice=this.value;save()">
-      <option value="pt-PT">欧洲葡语 pt-PT</option>
-      <option value="pt-BR">巴西葡语 pt-BR</option></select>
     <label>每日新词目标</label>
     <input type="number" value="${D.set.goalW}" onchange="D.set.goalW=+this.value||5;save()">
     <label>每日阅读目标（分钟）</label>
     <input type="number" value="${D.set.goalMin}" onchange="D.set.goalMin=+this.value||15;save()">
-    <label>每轮复习上限</label>
-    <input type="number" value="${D.set.revBatch}" onchange="D.set.revBatch=+this.value||30;save()">
-    <label>每周达标天数</label>
-    <input type="number" value="${D.set.weekGoal}" onchange="D.set.weekGoal=+this.value||5;save()">
+
+    <details style="margin-top:12px"><summary>高级</summary>
+      <label>每轮复习上限</label>
+      <input type="number" value="${D.set.revBatch}" onchange="D.set.revBatch=+this.value||30;save()">
+      <label>每周达标天数</label>
+      <input type="number" value="${D.set.weekGoal}" onchange="D.set.weekGoal=+this.value||5;save()">
+    </details>
+  </div>
+
+  <div class="card"><h2>数据备份</h2>
+    <p class="mu">${expText}</p>
     <div class="row" style="margin-top:10px">
       <button onclick="doExport()">导出备份</button>
       <label class="btn g">导入备份<input type="file" accept=".json,application/json" hidden onchange="imp(this)"></label></div>
-    <p class="mu" style="margin-top:10px">上次导出：${D.set.lastExport
-      ? new Date(D.set.lastExport).toLocaleDateString('zh-CN') : '从未'}</p>
+    <p class="mu" style="margin-top:10px">换手机、清 Safari 数据都会丢记录，建议每周导出一次。</p>
   </div>
 
   <div class="card"><h2>关于</h2>
-    <p class="mu">发音使用 Azure pt-PT 神经语音（欧葡）。若系统语音未安装葡语声音包，
-      请到 设置 → 辅助功能 → 朗读内容 → 声音 → 葡萄牙语 下载增强语音。</p></div>`;
-  const sv = $('sv'); if (sv) sv.value = D.set.voice;
+    <p class="mu">发音使用 Azure pt-PT 神经语音（欧葡）。课文音频已随 App 一起下载，
+      单词发音由服务器即时合成。</p></div>`;
 }
 function setShow(v) { D.set.show = v; save(); rStats(); }
 
-function doExport() {
-  D.set.lastExport = Date.now();
+async function doExport() {
+  const name = `apt-backup-${today()}.json`;
+  const text = JSON.stringify(D);
+  const blob = new Blob([text], { type: 'application/json' });
+  // iOS 主屏 App 里 <a download> 历来不稳定：优先弹系统分享面板，
+  // 她可以直接存到「文件」或 iCloud；不支持分享的浏览器再退回下载。
+  try {
+    const file = new File([blob], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'APT 备份' });
+      D.set.lastExport = Date.now(); save(); toast('备份已保存', 2000); rStats();
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;   // 她自己取消了，不算失败
+    // 分享失败就继续走下载
+  }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(D)], { type: 'application/json' }));
-  a.download = `apt-backup-${today()}.json`;
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
   a.click();
+  D.set.lastExport = Date.now();
   save();
 }
 function imp(el) {
@@ -1052,11 +1173,11 @@ function imp(el) {
   f.text().then(t => {
     let o = null;
     try { o = JSON.parse(t); } catch (e) { o = null; }
-    if (!o || !o.words || !o.logs) { alert('文件格式不对'); return; }
+    if (!o || !o.words || !o.logs) { toast('文件格式不对', 2500); return; }
     if (!confirm('导入会覆盖当前数据，确定吗？')) return;
     localStorage.setItem(K, JSON.stringify(L.migrate(o)));
     location.reload();
-  }).catch(() => alert('文件格式不对'));
+  }).catch(() => toast('文件格式不对', 2500));
 }
 
 /* ---------- 离线预下载 ---------- */
@@ -1085,32 +1206,14 @@ async function dlAll(btn) {
 }
 
 /* ---------- 启动 ---------- */
-let quickPool = null;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (recOn) return;
-  if (mode === 'dict' && curL) return;   // 练习中不打断
+  if (dOwner) return;   // 听写练习中不打断
   try { if (!tab) return; R[tab](); } catch (e) {}
 });
 
-// 系统语音检查（M2-5）
-function checkVoices() {
-  let vs = [];
-  try { vs = speechSynthesis.getVoices() || []; } catch (e) { return; }
-  if (!vs.length) {
-    try { speechSynthesis.addEventListener('voiceschanged', checkVoices, { once: true }); } catch (e) {}
-    return;
-  }
-  const hasPt = vs.some(v => /^pt[-_]/i.test(v.lang || ''));
-  if (!hasPt && !D._voiceNag) {
-    D._voiceNag = 1; save();
-    setTimeout(() => {
-      alert('系统里没有葡语语音包，发音质量会差很多。\\n\\n' +
-        '设置 → 辅助功能 → 朗读内容 → 声音 → 葡萄牙语 → 下载「增强」或「高级」语音。\\n\\n' +
-        '（App 自带的课文音频不受影响，只有备用系统语音需要它。）');
-    }, 800);
-  }
-}
+// 系统语音检查已移除：那条兜底路径从来没被真正使用过（见文件上方的说明）。
 
 load();
 if (navigator.storage && navigator.storage.persist) {
@@ -1118,7 +1221,6 @@ if (navigator.storage && navigator.storage.persist) {
 }
 startRound();          // 预热：进入复习页时队列已就绪
 show('today');
-setTimeout(checkVoices, 1200);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>

@@ -375,15 +375,9 @@ t('SCHEMA 为 4', () => {
   assert.equal(L.SCHEMA, 4);
 });
 
-// ---------- 报告 ----------
-
-console.log(`\nlogic.js 测试：${passed} 通过，${failed} 失败`);
-if (failed) {
-  console.log('\n失败明细：');
-  for (const f of fails) console.log(`  [失败] ${f.name}\n         ${f.msg}`);
-  process.exit(1);
-}
-console.log('全部通过。\n');
+// ---------- 报告见文件末尾 ----------
+// 注意：报告块必须留在文件最后。它原来夹在中间（M6 之前），
+// 后面 36 个 M6 用例失败了也不会打印，退出码仍是 0 —— 测试假绿。
 // ================================================================
 // M6 双释义：格式兼容、显示模式、假朋友、批量导入、搜索
 // ================================================================
@@ -616,3 +610,164 @@ t('migrate 新增 del 墓碑数组不丢', () => {
   });
   assert.equal(d.del.length, 1);
 });
+
+// ================================================================
+// M7-1 回归用例：这几个 bug 上线后每天都会碰到，必须锁住
+// ================================================================
+
+// ---------- streak：今天有记录 ≠ 今天打过卡 ----------
+
+t('streak 今天有记录但没打卡，从昨天起数（M7-1 bug 2）', () => {
+  // rToday() 一渲染就会 log() 建出今天的空记录，done 为 false。
+  // 旧实现只看「有没有记录」，于是每天开盘都显示 0。
+  const logs = mkLog([daysAgo(1), daysAgo(2)]);
+  logs[L.today()] = { done: false, read: [] };
+  assert.equal(L.streak(logs), 2);
+});
+
+t('streak 今天有记录且已打卡，算上今天', () => {
+  const logs = mkLog([daysAgo(1), daysAgo(2)]);
+  logs[L.today()] = { done: true };
+  assert.equal(L.streak(logs), 3);
+});
+
+t('streak 今天有记录但没打卡，昨天也没打卡 → 0', () => {
+  const logs = {};
+  logs[L.today()] = { done: false };
+  assert.equal(L.streak(logs), 0);
+});
+
+t('streak 今天有记录但没打卡，昨天打了 → 1', () => {
+  const logs = mkLog([daysAgo(1)]);
+  logs[L.today()] = { done: false };
+  assert.equal(L.streak(logs), 1);
+});
+
+// ---------- migrate：null 与空对象 ----------
+
+t('migrate(null) 返回 null（调用方必须自己兜底）', () => {
+  assert.equal(L.migrate(null), null);
+  assert.equal(L.migrate(undefined), null);
+});
+
+t('migrate({}) 必须补齐全部默认值（M7-1 bug 1）', () => {
+  // load() 曾写成 L.migrate(d)，d 为 null 时拿到 null，
+  // 兜底对象的 set 是空的 → 首屏「本周 0/undefined」「阅读 0 / undefined 分钟」
+  const d = L.migrate({});
+  assert.equal(d.set.goalW, 5);
+  assert.equal(d.set.goalMin, 15);
+  assert.equal(d.set.revBatch, 30);
+  assert.equal(d.set.weekGoal, 5);
+  assert.equal(d.set.weekStart, 0);
+  assert.equal(d.set.voice, 'pt-PT');
+  assert.equal(d.set.schema, 4);
+  assert.equal(d.set.lastExport, 0);
+  assert.deepEqual(d.words, []);
+  assert.deepEqual(d.logs, {});
+  assert.deepEqual(d.del, []);
+});
+
+t('migrate({}) 之后的 set 里没有 undefined 值', () => {
+  const d = L.migrate({});
+  for (const [k, v] of Object.entries(d.set)) {
+    assert.notEqual(v, undefined, `set.${k} 是 undefined`);
+  }
+});
+
+t('migrate 不覆盖用户已改过的目标值', () => {
+  const d = L.migrate({ set: { goalW: 8, goalMin: 30, weekGoal: 7, schema: 4 } });
+  assert.equal(d.set.goalW, 8);
+  assert.equal(d.set.goalMin, 30);
+  assert.equal(d.set.weekGoal, 7);
+});
+
+// ---------- 快速听写取句（M7-1 bug 4 / M7-2） ----------
+
+const LESSONS = [
+  { id: 'L01', sents: [{ t: 'a', a: 'a.mp3' }, { t: 'b', a: 'b.mp3' }, { t: 'c' }] },
+  { id: 'L02', sents: [{ t: 'd', a: 'd.mp3' }] },
+  { id: 'L03', sents: [{ t: 'e', a: 'e.mp3' }] },
+];
+
+t('quickPool 只从读过的课文里取句', () => {
+  const p = L.quickPool(LESSONS, { L02: 1 }, 5);
+  assert.deepEqual(p.map(s => s.t), ['d']);
+});
+
+t('quickPool 跳过没有音频的句子', () => {
+  const p = L.quickPool(LESSONS, { L01: 1 }, 5);
+  assert.deepEqual(p.map(s => s.t), ['a', 'b'], 'c 没有 a 字段，不得入选');
+});
+
+t('quickPool 默认最多 5 句', () => {
+  const many = [{ id: 'L01', sents: Array.from({ length: 9 }, (_, i) => ({ t: 's' + i, a: i + '.mp3' })) }];
+  assert.equal(L.quickPool(many, { L01: 1 }).length, 5);
+});
+
+t('quickPool 没读过任何课文时为空', () => {
+  assert.equal(L.quickPool(LESSONS, {}, 5).length, 0);
+  assert.equal(L.quickPool(LESSONS, null, 5).length, 0);
+  assert.equal(L.quickPool(null, { L01: 1 }, 5).length, 0);
+});
+
+t('quickPool 返回的是句子对象本身（含 t 和 a）', () => {
+  const p = L.quickPool(LESSONS, { L01: 1 }, 5);
+  assert.equal(p[0].t, 'a');
+  assert.equal(p[0].a, 'a.mp3');
+});
+
+// ---------- 全文翻译由 sents 拼出（M7-6） ----------
+
+const SENTS = [
+  { p: 0, t: 'Olá!', en: 'Hello!', zh: '你好！' },
+  { p: 0, t: 'Chamo-me Mei.', en: 'My name is Mei.', zh: '我叫Mei。' },
+  { p: 1, t: 'Gosto das aulas.', en: 'I like the classes.', zh: '我喜欢上课。' },
+];
+
+t('transFromSents 按段落分组', () => {
+  const tr = L.transFromSents(SENTS);
+  assert.equal(tr.en, 'Hello! My name is Mei.\nI like the classes.');
+  assert.equal(tr.zh, '你好！我叫Mei。\n我喜欢上课。');
+});
+
+t('transFromSents 英文按句空格连接，中文直接相连', () => {
+  const tr = L.transFromSents(SENTS);
+  assert.ok(!/。\s+/.test(tr.zh.replace(/\n/g, '')), '中文之间不应插空格');
+  assert.ok(tr.en.includes('Hello! My name'), '英文句间应有空格');
+});
+
+t('transFromSents 段落顺序按 p 排序，不依赖数组顺序', () => {
+  const tr = L.transFromSents([SENTS[2], SENTS[0], SENTS[1]]);
+  assert.equal(tr.zh.split('\n')[0], '你好！我叫Mei。');
+});
+
+t('transFromSents 缺翻译的句子被跳过而不是留空洞', () => {
+  const tr = L.transFromSents([
+    { p: 0, t: 'A', en: 'A.', zh: '甲。' },
+    { p: 0, t: 'B', en: '', zh: '' },
+    { p: 0, t: 'C', en: 'C.', zh: '丙。' },
+  ]);
+  assert.equal(tr.en, 'A. C.');
+  assert.equal(tr.zh, '甲。丙。');
+});
+
+t('transFromSents 空输入返回空串', () => {
+  assert.deepEqual(L.transFromSents([]), { en: '', zh: '' });
+  assert.deepEqual(L.transFromSents(null), { en: '', zh: '' });
+});
+
+t('transFromSents 只有中文时 en 为空串', () => {
+  const tr = L.transFromSents([{ p: 0, t: 'A', zh: '甲。' }]);
+  assert.equal(tr.en, '');
+  assert.equal(tr.zh, '甲。');
+});
+
+// ---------- 报告（必须在文件最后） ----------
+
+console.log(`\nlogic.js 测试：${passed} 通过，${failed} 失败`);
+if (failed) {
+  console.log('\n失败明细：');
+  for (const f of fails) console.log(`  [失败] ${f.name}\n         ${f.msg}`);
+  process.exit(1);
+}
+console.log('全部通过。\n');

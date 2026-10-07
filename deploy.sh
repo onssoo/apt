@@ -1,7 +1,7 @@
 #!/bin/sh
 # deploy.sh —— 一条命令完成发布。契约见 docs/CONTRACT.md 第 10 章。
 #
-# 流程：validate → 检查音频齐全 → rsync → 核对线上的 version
+# 流程：validate → 检查音频齐全 → rsync → 用 curl 核对线上 materials.json 的 version
 #
 # ⚠️ 绝不使用 --delete：VPS 上还跑着 lababa 与 PostgreSQL，
 #    且远端文件只应由 tools/clean_orphans.py 显式清理。
@@ -21,15 +21,23 @@ fi
 VPS_HOST=${VPS:-ubuntu@203.0.113.10}
 VPS_PORT=${VPS_SSH_PORT:-2222}
 REMOTE_DIR=${REMOTE_DIR:-/var/www/apt}
-SSH="ssh -p $VPS_PORT"
-RSYNC="rsync -av --progress"
+SITE_HOST=${SITE_HOST:-apt.example.com}
+# 公网 22 被云镜封了，必须走 $VPS_SSH_PORT（默认 2222）。
+# 这里以前定义了一个 SSH 变量却从没使用，rsync 默认走 22 端口，脚本根本跑不通。
+VPS_KEY=${VPS_SSH_KEY:-}
+if [ -n "$VPS_KEY" ]; then
+	RSYNC_SSH="ssh -p $VPS_PORT -i $VPS_KEY"
+else
+	RSYNC_SSH="ssh -p $VPS_PORT"
+fi
 
-echo "==> 1/4 校验数据"
+echo "==> 1/5 校验数据"
 python3 tools/validate.py --quiet
 
-echo "==> 2/4 检查音频齐全"
-python3 tools/validate.py --audio --quiet 2>&1 | grep -E "音频引用|错误" || true
-# wa 与 words 长度不一致 = 构建未完成，必须拦住
+echo "==> 2/5 检查音频齐全"
+# 这里以前写成 `validate.py --audio ... | grep ... || true`，
+# 管道把退出码吃掉了，167 个音频全缺也照样发布。必须让它直接把脚本拦停。
+python3 tools/validate.py --audio --quiet
 python3 - <<'PY'
 import json, sys
 M = json.load(open("site/materials.json", encoding="utf-8"))
@@ -50,17 +58,33 @@ if bad:
 print(f"音频齐全：{len(M['lessons'])} 课")
 PY
 
-echo "==> 3/4 上传到 $VPS_HOST:$REMOTE_DIR"
-$RSYNC site/ "$VPS_HOST:$REMOTE_DIR/"
-
-echo "==> 4/4 核对线上的 version"
 LOCAL_V=$(python3 -c "import json;print(json.load(open('site/materials.json',encoding='utf-8'))['version'])")
 echo "本地 version: $LOCAL_V"
-echo "请在浏览器打开 https://apt.example.com 抽查一课。"
+
+echo "==> 3/5 上传到 $VPS_HOST:$REMOTE_DIR"
+rsync -av --progress -e "$RSYNC_SSH" site/ "$VPS_HOST:$REMOTE_DIR/"
+
+echo "==> 4/5 核对线上的 version"
+# 以前这一步只 echo 本地 version 就结束了，根本没有核对。
+# 用 --no-cache 绕开 CDN/浏览器缓存，确保读的是刚上传的那份。
+REMOTE_V=$(curl -fsS --max-time 20 -H 'Cache-Control: no-cache' \
+  "https://$SITE_HOST/materials.json?x=$(date +%s)" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin).get('version'))")
+echo "线上 version: $REMOTE_V"
+if [ "$REMOTE_V" != "$LOCAL_V" ]; then
+	echo "❌ 线上 version（$REMOTE_V）与本地（$LOCAL_V）不一致，发布可能没生效。" >&2
+	exit 1
+fi
+
+echo "==> 5/5 抽查页面与发音代理"
+HEAD=$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 "https://$SITE_HOST/")
+echo "首页 HTTP $HEAD"
+if [ "$HEAD" != "200" ]; then
+	echo "❌ 首页不是 200" >&2
+	exit 1
+fi
 
 echo ""
-echo "发布完成。注意：首次部署还需在 VPS 上做一次性配置（见 docs/CONTRACT.md 16.1）："
-echo "  · 部署发音代理（/opt/apt-tts/tts_proxy.py + /etc/apt-tts.env + apt-tts.service）"
-echo "  · 追加 Caddyfile 的 apt.example.com 站点块（先备份，caddy validate 后 reload）"
+echo "发布完成。请打开 https://$SITE_HOST 抽查一课（真机验证见 docs/acceptance.md）。"
 echo ""
 echo "⚠️  .env 与密钥从未上传。Caddyfile 与代理配置需手动在 VPS 上放置。"

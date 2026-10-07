@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APT 自检</title>
+<style>
+body{font-family:-apple-system,sans-serif;background:#fff;margin:0;padding:18px;color:#111;font-size:16px}
+h1{font-size:19px;margin:0 0 14px}
+div.r{padding:11px 0;border-bottom:1px solid #ddd;line-height:1.5}
+.g{color:#0a7d28;font-weight:700}
+.x{color:#c00;font-weight:700}
+.b{padding:16px;font-size:17px;border:0;border-radius:10px;background:#c00;color:#fff;width:100%;margin:10px 0;font-weight:600}
+.g2{background:#555}
+#box{margin:14px 0;padding:4px}
+</style>
+</head>
+<body>
+<h1>APT 自检结果</h1>
+<div id="box">正在检测…</div>
+<button class="b" onclick="clearAll()">① 清缓存，强制重载 App</button>
+<button class="b g2" onclick="location.href='/'">② 只刷新 App（不��）</button>
+<p style="font-size:14px;color:#666;line-height:1.6">
+若第2 行显示「否」，说明浏览器拿到的是旧代码，必须点上面的按钮清缓存。</p>
+
+<script>
+var out = '';
+function add(cls, t) {
+  out += '<div class="r"><span class="' + cls + '">' + (cls==='g'?'✓':'✗') + '</span>  ' + t + '</div>';
+  document.getElementById('box').innerHTML = out;
+}
+async function unreg() {
+  const rs = await navigator.serviceWorker.getRegistrations();
+  for (const r of rs) await r.unregister();
+  if (window.caches) { for (const k of await caches.keys()) await caches.delete(k); }
+  return rs.length;
+}
+async function clearAll() {
+  const n = await unreg();
+  add('g', '已清 ' + n + ' 个 Service Worker 与全部缓存，正在重载…');
+  setTimeout(() => location.replace('/?r=' + Date.now()), 1000);
+}
+
+// 用 iframe 加载真实 App，检测它内部的状态
+add('g', '这个页面能显示，说明你的浏览器和联网都正常');
+const sw = ('serviceWorker' in navigator);
+if (sw) navigator.serviceWorker.getRegistrations().then(rs => {
+  add(rs.length ? 'x' : 'g', 'Service Worker：' + rs.length + ' 个' + (rs.length ? '（有旧缓存，需清）' : '（干净）'));
+});
+
+try {
+  localStorage.setItem('_t', '1'); localStorage.removeItem('_t');
+  add('g', 'localStorage 可写');
+} catch (e) { add('x', 'localStorage 不可写：' + e.message); }
+
+const fr = new URLSearchParams(location.search);
+const bust = fr.get('r') || Date.now();
+
+// 检测线上 App 代码是否最新
+fetch('/index.html?x=' + bust, { cache: 'no-cache' })
+  .then(r => r.text())
+  .then(t => {
+    const isNew = /loadMaterials/.test(t);
+    add(isNew ? 'g' : 'x', '线上 App 是否最新：' + (isNew ? '是' : '否 ← 你拿到的是旧代码，必须清缓存'));
+    const hasAudio = /id="au"/.test(t);
+    add(hasAudio ? 'g' : 'x', '新版音频标签：' + (hasAudio ? '有' : '无'));
+    // 实际用 App 的方式加载一次课文数据
+    return fetch('materials.json?x=' + bust, { cache: 'no-cache' })
+      .then(r => r.json())
+      .then(m => add(m && m.lessons ? 'g' : 'x', '课文数据：' + (m && m.lessons ? m.lessons.length + ' 篇已就绪' : '异常')))
+      .catch(e => add('x', '课文数据加载失败：' + e.message));
+  })
+  .catch(e => add('x', '拉取 App 失败：' + e.message));
+</script>
+</body>
+</html>

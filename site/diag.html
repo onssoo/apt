@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>APT 音频诊断</title>
+<style>
+:root{--ok:#0a7d28;--bad:#c00;--warn:#c70;--t:#222;--mu:#666;--card:#fff;--bg:#f5f6f8}
+@media (prefers-color-scheme:dark){:root{--t:#eee;--mu:#999;--card:#1c1c1e;--bg:#111}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);
+ color:var(--t);padding:16px}
+h1{font-size:19px;margin:0 0 4px}
+h2{font-size:15px;margin:18px 0 8px}
+p{font-size:14px;line-height:1.6;margin:6px 0;color:var(--mu)}
+button{font-size:15px;padding:12px 16px;border:0;border-radius:8px;background:#00843D;color:#fff;
+ min-height:44px;margin:4px 5px 4px 0}
+button.g{background:#8882;color:var(--t)}
+.card{background:var(--card);border-radius:10px;padding:12px;margin-bottom:10px}
+.r{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.5;padding:5px 0;
+ border-bottom:1px solid #8882}
+.r:last-child{border-bottom:0}
+.s{flex:0 0 22px;font-weight:700}
+.t-ok{color:var(--ok)}.t-bad{color:var(--bad)}.t-warn{color:var(--warn)}.t-mu{color:var(--mu)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#8881;padding:1px 4px;border-radius:3px}
+audio{width:100%;margin:8px 0}
+</style>
+</head>
+<body>
+<h1>APT 音频诊断</h1>
+<p>逐步显示音频播放链路在哪一环断掉。请把这一页的完整结果截图发回。</p>
+
+<h2>第 1 步：环境</h2>
+<div class="card" id="env"></div>
+
+<h2>第 2 步：直接播放一个音频文件</h2>
+<p>绕过所有代码，用浏览器原生播放器播同一个文件。能响说明文件与解码没问题。</p>
+<button onclick="t2()">播放 dbfb44b9ef4cecaa.mp3</button>
+<div class="card" id="r2"></div>
+
+<h2>第 3 步：模拟 App 的播放方式</h2>
+<button onclick="t3()">用 new Audio() 播放</button>
+<div class="card" id="r3"></div>
+
+<h2>第 4 步：检查 Service Worker 是否干扰</h2>
+<div class="card" id="r4"></div>
+
+<h2>第 5 步：系统语音</h2>
+<p>如果音频全都不行，试试系统语音。系统语音也没声音说明是设备层面的限制。</p>
+<button onclick="t5()">播放系统语音Olá</button>
+<div class="card" id="r5"></div>
+
+<h2>第 6 步：Service Worker 是否在干扰音频</h2>
+<button onclick="t6()">检查 SW 与音频缓存</button>
+<div class="card" id="r6"></div>
+
+<h2>汇总</h2>
+<div class="card" id="sum"></div>
+
+<script>
+const L = [];
+function log(step, cls, msg) {
+  L.push({ step, cls, msg });
+  paint();
+}
+function cls(c) { return c === 'ok' ? 't-ok' : c === 'bad' ? 't-bad' : c === 'warn' ? 't-warn' : 't-mu'; }
+function mark(c) { return c === 'ok' ? '✓' : c === 'bad' ? '✗' : c === 'warn' ? '!' : '·'; }
+
+function box(id, rows) {
+  document.getElementById(id).innerHTML = rows
+    .map(r => `<div class="r"><span class="s ${cls(r[0])}">${mark(r[0])}</span><span>${r[1]}</span></div>`)
+    .join('');
+}
+function paint() {
+  const sum = document.getElementById('sum');
+  const bad = L.filter(x => x[1] === 'bad').length;
+  const warn = L.filter(x => x[1] === 'warn').length;
+  sum.innerHTML = `<div class="r"><span class="s ${bad ? 't-bad' : 't-ok'}">${bad ? '✗' : '✓'}</span>
+    <span><b>${bad ? bad + ' 项失败' + (warn ? '，' + warn + ' 项警告' : '') : '全部通过'}</b>
+    <br><span style="color:var(--mu);font-size:13px">${
+      bad ? '把这一页截图发回。失败项的编号就是问题所在。' : '音频链路正常，可以刷新 App 页面再试。'
+    }</span></span></div>`;
+}
+
+// ---- 第 1 步：环境 ----
+(function(){
+  const ua = navigator.userAgent;
+  const rows = [];
+  rows.push(['ok', 'User-Agent：<code>' + ua.slice(0, 110) + '</code>']);
+  const iOS = /iPhone|iPad|iPod/.test(ua);
+  rows.push([iOS ? 'ok' : 'warn', iOS ? 'iOS 设备 ✓' : '**不是 iOS**，若是桌面浏览器请说明']);
+  const sa = window.navigator.standalone;
+  rows.push([sa ? 'warn' : 'ok', sa ? 'standalone 模式（主屏 App）—— 媒体限制更严' : 'Safari 标签页（非standalone）']);
+
+  const voices = speechSynthesis.getVoices();
+  rows.push([voices.length ? 'ok' : 'warn',
+    '系统语音 ' + voices.length + ' 个' +
+    (voices.filter(v => /^pt/i.test(v.lang)).length ? '，其中葡语 ' + voices.filter(v => /^pt/i.test(v.lang)).length + ' 个 ✓'
+     : '，**没有葡语语音**（App 会退回无声，但课文音频不该受影响）')]);
+
+  // 能否加载音频测试
+  const a = new Audio('audio/dbfb44b9ef4cecaa.mp3');
+  a.preload = 'auto';
+  const t0 = Date.now();
+  a.addEventListener('canplaythrough', () => {
+    log(1, 'ok', '音频可加载（canplaythrough）✓ 耗时 ' + (Date.now() - t0) + 'ms');
+  });
+  a.addEventListener('error', () => {
+    const c = a.error ? a.error.code : '?';
+    log(1, 'bad', '音频加载失败 error.code=' + c +
+      ({1:'MEDIA_ERR_ABORTED',2:'MEDIA_ERR_NETWORK',3:'MEDIA_ERR_DECODE',4:'MEDIA_ERR_SRC_NOT_SUPPORTED'}[c] || ''));
+  });
+  a.addEventListener('stalled', () => log(1, 'warn', '音频加载卡住（stalled）'));
+  setTimeout(() => {
+    if (a.readyState >= 3) log(1, 'ok', '音频 readyState=' + a.readyState + '（>=3 就绪）');
+    else if (a.readyState === 0) log(1, 'bad', '音频 readyState=0（网络层就没拿到数据）');
+    else log(1, 'warn', '音频 readyState=' + a.readyState + '（1=HAVE_METADATA, 2=HAVE_CURRENT_DATA，未到 3）');
+  }, 2500);
+
+  box('env', rows);
+})();
+
+// ---- 第 2 步：原生播放器 ----
+window.t2 = function() {
+  const box2 = document.getElementById('r2');
+  box2.innerHTML = '<div class="r"><span class="s t-mu">·</span><span>播放中…请确认手机有声音（或静音键没关）</span></div>';
+  const a = new Audio('audio/dbfb44b9ef4cecaa.mp3');
+  a.addEventListener('playing', () => {
+    log(2, 'ok', 'playing 事件触发，duration=' + a.duration + 's');
+    box('r2', [['ok', '开始播放。如果没听到声音，检查手机静音键与音量']]);
+  });
+  a.addEventListener('error', () => {
+    log(2, 'bad', '播放失败 error.code=' + (a.error ? a.error.code : '?'));
+    box('r2', [['bad', '原生播放也失败 → 问题在文件/解码/网络，不在 App 代码']]);
+  });
+  a.play().then(() => {
+    log(2, 'ok', 'play() promise resolved（说明在用户手势内）');
+  }).catch(e => {
+    log(2, 'bad', 'play() 被拒绝：' + e.name + ' — ' + e.message);
+    box('r2', [['bad', 'play() 被拒绝：' + e.name]]);
+  });
+};
+
+// ---- 第 3 步：new Audio + 相对路径 ----
+window.t3 = function() {
+  box('r3', [['·', '播放中…']]);
+  const a = new Audio();
+  a.src = 'audio/dbfb44b9ef4cecaa.mp3';   // 与 App 相同：相对路径、同步赋值
+  a.play().then(() => {
+    log(3, 'ok', '相对路径 new Audio() 播放成功');
+    box('r3', [['ok', '成功。若第2 步也成功但 App 不行，问题在 App 的解锁逻辑']]);
+  }).catch(e => {
+    log(3, 'bad', '失败：' + e.name + ' — ' + e.message);
+    box('r3', [['bad', '失败：' + e.name + '（' + (e.message||'') + '）']]);
+  });
+};
+
+// ---- 第 4 步：Service Worker ----
+(function(){
+  const rows = [];
+  if (!('serviceWorker' in navigator)) {
+    rows.push(['warn', '此浏览器不支持 Service Worker']);
+    log(4, 'warn', 'SW 不支持');
+  } else {
+    navigator.serviceWorker.getRegistrations().then(rs => {
+      if (!rs.length) { log(4,'ok','未注册 SW（不会有缓存干扰）'); rows.push(['ok','未注册 Service Worker']); }
+      else {
+        log(4, 'warn', '已注册 ' + rs.length + ' 个 SW —— 音频请求会被它接管');
+        rows.push(['warn', '已注册 ' + rs.length + ' 个 Service Worker']);
+        rs.forEach(r => rows.push(['warn', 'scope: ' + (r.scope || r.active && r.active.scope || '?')]));
+      }
+      box('r4', rows);
+    }).catch(e => { rows.push(['warn','查询失败 '+e.message]); box('r4', rows); });
+  }
+  box('r4', rows);
+})();
+
+// ---- 第 5 步：系统语音 ----
+window.t5 = function() {
+  const rows = [];
+  const u = new SpeechSynthesisUtterance('Olá! Bom estudo!');
+  u.lang = 'pt-PT';
+  u.rate = 0.9;
+  let done = false;
+  u.onstart = () => { rows.push(['ok','onstart 触发']); log(5,'ok','系统语音 onstart'); box('r5',rows); };
+  u.onend = () => { rows.push(['ok','onend 触发，播完了']); log(5,'ok','系统语音 onend'); box('r5',rows); };
+  u.onerror = e => { rows.push(['bad','onerror: '+e.error]); log(5,'bad','系统语音 onerror '+e.error); box('r5',rows); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+  rows.push(['·','已调用speak()，等事件…']); box('r5', rows);
+  setTimeout(() => {
+    if (!done) {
+      rows.push(['warn','2.5 秒内无 onstart/onend 事件']);
+      log(5,'warn','系统语音无事件');
+      box('r5', rows);
+    }
+  }, 2500);
+};
+
+/* 第 6 步：直接检查 SW 对音频的处理结果 */
+window.t6 = function(){
+  const rows = [];
+  // ① 当前是否被 SW 控制
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+    rows.push(['ok','本页未被 Service Worker 控制（可直接播）']);
+  } else {
+    rows.push(['ok','本页被 SW 控制：' + navigator.serviceWorker.controller.scriptURL]);
+  }
+  // ② 发一个带 Range 的请求，看服务端返回 200 还是 206
+  fetch('audio/dbfb44b9ef4cecaa.mp3', { headers: { Range: 'bytes=0-' } })
+    .then(r => {
+      const isPartial = r.status === 206;
+      rows.push([isPartial ? 'ok' : 'warn',
+        'Range 请求 → HTTP ' + r.status +
+        (isPartial ? '（206 局部，正常；新版 SW 不再缓存它）' : '（200 完整）')]);
+      // ③ 检查 Cache Storage 里有没有被存进去的音频
+      if (window.caches) {
+        caches.keys().then(async ks => {
+          let audioCount = 0;
+          for (const k of ks) {
+            const c = await caches.open(k);
+            const reqs = await c.keys();
+            audioCount += reqs.filter(q => q.url.indexOf('/audio/') >= 0).length;
+          }
+          rows.push([audioCount ? 'bad' : 'ok',
+            'Cache Storage 里有 ' + audioCount + ' 个音频条目' +
+            (audioCount ? ' ← **旧版 SW 缓存的 206 残片**，清缓存后重试' : ' ✓ 干净')]);
+          box('r6', rows);
+        });
+      } else {
+        box('r6', rows);
+      }
+    })
+    .catch(e => { rows.push(['bad','请求失败：' + e.message]); box('r6', rows); });
+};
+
+log(0, 'ok', '诊断页已加载');
+</script>
+</body>
+</html>

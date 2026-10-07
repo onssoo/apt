@@ -64,7 +64,7 @@
                     │  + materials.json         │
                     │  + icon.png               │
                     └────┬───────────────┬─────┘
-                         │ GET /          │ GET /api/tts?t=
+                         │ GET /          │ POST /api/tts
                          ▼                ▼
               ┌──────────────────┐   ┌────────────────────────┐
               │ VPS (Ubuntu)     │   │ VPS 发音代理            │
@@ -113,7 +113,7 @@
 | C3 | 课文数据 | VPS `/var/www/apt/materials.json` | 课文正文、翻译、语法点、生词、题目、音频引用 | 不含音频二进制 |
 | C4 | 音频资产 | VPS `/var/www/apt/audio/` | 按句与按词的 MP3 | 不含未生成项 |
 | C5 | 发音代理 | VPS `127.0.0.1:8787` | 动态合成、落盘缓存、每日限额 | 不直接对外，仅经 Caddy 暴露 |
-| C6 | Caddy | VPS `:80/:443` | TLS、静态服务、代理转发、限流、访问日志开关 | 不做业务逻辑 |
+| C6 | Caddy | VPS `:80/:443` | TLS、静态服务、代理转发、访问日志开关 | 不做业务逻辑，**无内建限流**（见 9.1、15.1） |
 | C7 | 构建脚本 | Mac mini | 批量合成、幂等跳过、写回引用 | 不部署到 VPS |
 | C8 | 质检脚本 | Mac mini | ASR 回读比对、生成差异报告 | 不修改音频内容 |
 | C9 | Azure Speech | 云 | TTS 合成 | 无状态 |
@@ -126,7 +126,7 @@
 | C1 → C3/C4/C5 单向 | 前端只能读，不写；无反向依赖 |
 | C5 → C9 单向 | 代理依赖 Azure；Azure 挂掉则降级，不影响静态服务 |
 | C7/C8 不在生产路径 | 内容工厂离线，不参与学生请求链路 |
-| 关键隔离 | Azure 或代理故障时，C1 与 C6 仍完整可用，退化为系统语音 |
+| 关键隔离 | Azure 或代理故障时，C1 与 C6 仍完整可用；生词发音静默失败，课文预生成音频不受影响（句子没有兜底，见 6.2） |
 
 ---
 
@@ -212,7 +212,7 @@ VPS 上已有服务，本项目不得干扰：
 | 项 | 要求 | 原因 |
 |---|---|---|
 | HTTPS | 必须 | Service Worker 与添加到主屏幕在非安全上下文下不工作 |
-| 证书 | certbot 自动签发与续期 | 免人工维护 |
+| 证书 | Caddy 自动签发与续期 | 免人工维护，**不跑 certbot** |
 | 混合内容 | 禁止 | HTTP 资源在 HTTPS 页面上被阻断 |
 | HSTS | 可选，首版不开 | 避免证书问题导致长时间不可访问 |
 
@@ -233,13 +233,14 @@ VPS 上已有服务，本项目不得干扰：
 
 | 文件 | 必需 | 说明 | 缓存策略 |
 |---|---|---|---|
-| `index.html` | 是 | 全部界面与逻辑 | 联网优先 |
+| `index.html` | 是 | 界面与交互逻辑 | 联网优先 |
+| `logic.js` | 是 | 拆出的纯函数（日期、间隔重复、听写比对、切句、迁移、格式归一） | 联网优先 |
 | `sw.js` | 是 | Service Worker | 联网优先 |
 | `manifest.json` | 是 | PWA 清单 | 联网优先 |
 | `materials.json` | 是 | 课文数据 | 联网优先 |
 | `icon.png` | 是 | 512×512 主屏图标 | 联网优先 |
 | `audio/*.mp3` | 是 | 课文音频 | 缓存优先（内容不可变） |
-| `/api/tts` | 否（运行时） | 动态发音 | 缓存优先（落盘结果不可变） |
+| `/api/tts` | 否（运行时） | 动态发音（**POST**，body 为纯文本） | 不缓存（SW 只拦截 GET 请求；合成结果由代理落盘缓存） |
 
 **硬性要求**：`icon.png` 与 `materials.json` 必须在首次安装时存在，否则 Service Worker 的 `addAll` 失败，离线缓存装不上，App 退化为每次联网才能打开。
 
@@ -271,7 +272,7 @@ VPS 上已有服务，本项目不得干扰：
 
 | 字段 | 类型 | 必需 | 说明 |
 |---|---|---|---|
-| `version` | 数 | 是 | 数据版本，便于客户端判断新旧 |
+| `version` | 数 | 是 | 数据版本，便于客户端判断新旧。**当前为 `2`**；v2 起删掉了 `trans` 与 `trans_lines`，逐句翻译的唯一来源是 `sents[].en` / `sents[].zh` |
 | `lessons` | 数组 | 是 | 课文数组 |
 
 ### 6.2 课文对象字段
@@ -283,21 +284,23 @@ VPS 上已有服务，本项目不得干扰：
 | `min` | 数 | 作者 | 预计分钟数 |
 | `title` | 文本 | 作者 | 葡语标题 |
 | `zh` | 文本 | 作者 | 中文标题 |
+| `en` | 文本 | 作者 | 标题英文（可选，前端显示在葡语标题下方） |
 | `text` | 文本 | 作者 | 正文，段落以换行分隔 |
-| `trans` | 文本 | 作者 | 中文翻译，段落与正文对应。`sents[].zh` 存在时它作为整篇对照；两者都缺时该课文无中文 |
+| `trans` | 文本 | 作者 | **v2 起删除**（连同 `trans_lines`）。全文翻译由前端 `Logic.transFromSents()` 按段落把 `sents[].en` / `sents[].zh` 拼出来。旧文件里若仍有 `trans`，前端会优先用它（兼容层），但不再是目标格式 |
 | `note` | 文本 | 作者 | 中文语法点讲解 |
-| `words` | 二维数组 | 作者 | 每项为 `[葡语, 释义, 例句]`，例句可为空串 |
+| `reviewed` | 文本 | 作者 | 人工复核日期（`YYYY-MM-DD`）。课文里任何生词带 `ff` 时必须提供，否则校验硬报错（见 6.4） |
+| `words` | 数组 | 作者 | 每项为对象 `{pt, en, zh, ex, ff?}`：`pt` 必填，`en` 与 `zh` 至少一份，`ex` 可空，`ff` 为假朋友说明（可选）。**旧数组格式 `[pt, zh, ex?]` 仍兼容，但不是目标格式** |
 | `qs` | 二维数组 | 作者 | 每项为 `[问题, 参考答案]` |
-| `sents` | 数组 | **构建脚本** | 每项为 `{t: 文本, p: 段落序号, a: 音频相对路径, zh: 文本}`。`zh` 为**可选**逐句翻译，由作者提供、构建脚本原样保留 |
+| `sents` | 数组 | **构建脚本** | 每项为 `{t: 文本, p: 段落序号, a: 音频相对路径, en: 文本, zh: 文本, speaker?: 文本}`。`en` / `zh` 是**逐句翻译的唯一来源**，由作者提供、构建脚本原样保留 |
 | `wa` | 数组 | **构建脚本** | 生词音频路径，与 `words` 一一对应 |
 
 **关键契约**：`sents` 与 `wa` 由构建脚本生成并写回同一文件，其余字段由作者维护。
 
-**句子音频的兜底链只有两级**：预生成音频 → 系统语音。**句子不走发音代理**。原因是代理对输入长度限制为 100 字符，而课文句子普遍超过这个长度，会直接返回 400；把长句切碎去代理合成既浪费额度，又破坏整句语调。因此课文音频必须预生成。
+**句子音频没有兜底链**：只有「预生成音频」这一条路，没有音频文件时该句静默不发声。**句子不走发音代理**。原因是代理对输入长度限制为 100 字符，而课文句子普遍超过这个长度，会直接返回 400；把长句切碎去代理合成既浪费额度，又破坏整句语调。因此课文音频必须预生成。**系统语音（`speechSynthesis`）整条路径已于 2026-10-07 彻底移除**：实测在无葡语语音包的设备上不可用，且一旦调用会让整页媒体会话异常、连 `<audio>.play()` 都被拒。
 
-**单词音频的兜底链有三级**：预生成音频 → `api/tts` → 系统语音。学生自己添加的词没有预生成文件，但单词长度短，适合走代理即时合成。
+**单词音频的兜底链只有两级**：预生成音频 → `POST /api/tts`（body 为纯文本）。两级都失败就静默。学生自己添加的词没有预生成文件，但单词长度短，适合走代理即时合成。
 
-内容可以先上线、音频后补：缺失 `sents` 时前端按句末标点现场切分，逐句走系统语音朗读。
+内容可以先上线、音频后补：缺失 `sents` 时前端按句末标点现场切分；这些句子没有音频文件，播放时静默不发声。
 
 ### 6.3 切句规则
 
@@ -317,10 +320,15 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|
 | `lessons` 为非空数组 | 中止并报错 |
 | 每篇有 `id`、`title`、`text` | 中止并报错 |
-| `id` 不重复 | 中止并报错 |
-| `words` 每项至少有葡语与释义 | 跳过该条并计数 |
-| `text` 与 `trans` 段落数一致 | 告警，提示人工核对 |
+| `id` 匹配 `^L\d{2,}$` 且不重复 | 中止并报错 |
+| **段落对齐**：同一段（`p` 相同）的 `sents[].t` 用空格拼起来，必须与该段 `text` 逐字一致 | **中止并报错（硬错误）** |
+| `words` 每项至少有葡语，且英文与中文释义至少有一份 | 中止并报错 |
+| **`ff`（假朋友）必须配 `reviewed`**：课文里任何生词带 `ff`，而课文本身没有 `reviewed`（如 `"reviewed": "2026-10-07"`） | **中止并报错（硬错误，退出码 1）** |
+| **巴葡黑名单**：只扫葡语字段（`text` / `sents[].t` / `words[].pt` / `words[].ex` / `qs`，不扫 `en`/`zh`/`note`/`ff`），命中 `ônibus`、`trem`、`celular`、`café da manhã`、`geladeira`、`banheiro`、`garçom`、`estou fazendo` 式进行时、`você`、`legal` | 仅提醒，不阻断 |
+| `text` 与 `trans` 段落数一致（文件里仍有 `trans` 时） | 告警，提示人工核对 |
 | 生词条目数与 `wa` 长度一致 | 视为构建未完成，重跑构建脚本 |
+
+以上由 `tools/validate.py` 实现（`--audio` 另查音频文件是否齐全）。硬错误会打印 `[错误]` 并以退出码 1 结束。
 
 ---
 
@@ -353,7 +361,7 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|
 | 课文句子 | `audio/<hash>.mp3`（相对路径） |
 | 生词 | `audio/<hash>.mp3` |
-| 用户自建词（无预生成） | `api/tts?t=<URL 编码文本>` |
+| 用户自建词（无预生成） | **`POST api/tts`**，请求体为纯文本（UTF-8）。不是查询串，不存在 `?t=` 形式 |
 
 **禁止**在 `materials.json` 中写入绝对 URL 或跨域地址，否则离线与换域名都会失效。
 
@@ -405,7 +413,7 @@ VPS 上已有服务，本项目不得干扰：
 | 项 | 值 |
 |---|---|
 | 路径 | **`POST /api/tts`**，请求体为纯文本（UTF-8），即要合成的文本 |
-| 方法 | **POST 而非 GET**。GET 的 request line 有长度上限（Python 默认约 64 KB），且查询串会进 nginx/access log —— 查询串就是学生学习内容 |
+| 方法 | **POST 而非 GET**。GET 的 request line 有长度上限（Python 默认约 64 KB），且查询串会进 Caddy access log —— 查询串就是学生学习内容 |
 | 入参 | body 为葡语文本，去空白后长度 1 至 100；body 上限 4096 字节，超出返回 400 |
 | 出参 | `audio/mpeg` 二进制 |
 | 成功响应 | 200 + 音频 + `Cache-Control: public, max-age=31536000` |
@@ -424,7 +432,7 @@ VPS 上已有服务，本项目不得干扰：
 | 缓存目录 | systemd `StateDirectory` 提供，首版为 `/var/lib/apt-tts` |
 | 写入方式 | 先写临时文件再 `os.replace` 原子改名，防止并发下读到半文件 |
 | 每日新合成上限 | 5000 字符 |
-| 计数重置 | 按日期切换，重启后清零（**已知缺陷**，见 8.4） |
+| 计数重置 | 按日期切换，重启后清零（**已知缺陷**，见 9.4） |
 
 ### 9.3 权限与运行约束
 
@@ -440,7 +448,7 @@ VPS 上已有服务，本项目不得干扰：
 
 | 编号 | 缺陷 | 影响 | 处置 |
 |---|---|---|---|
-| C-1 | 每日计数保存在进程内存，进程重启即清零 | 服务崩溃或手动重启后，当天的额度计数从头开始。当天重启次数多时，实际合成量可能超过 5000 字符 | 首版接受。外部无法重启该服务，实际触发场景只有服务自身崩溃与运维手动重启，不是可被主动利用的绕过口。免费额度余量充足（详见 7.2），即使当日超支也不至于产生费用 |
+| C-1 | 每日计数保存在进程内存，进程重启即清零 | 服务崩溃或手动重启后，当天的额度计数从头开始。当天重启次数多时，实际合成量可能超过 5000 字符 | 首版接受。外部无法重启该服务，实际触发场景只有服务自身崩溃与运维手动重启，不是可被主动利用的绕过口。免费额度余量充足（详见 8.2），即使当日超支也不至于产生费用 |
 | C-1b | 计数以服务器本地日期为准 | **VPS 时区已核定为 `Asia/Shanghai`（UTC+8）**，与澳门一致，因此「每日重置」落在澳门时间午夜，符合预期。若将来 VPS 改时区或迁到别的区域，重置时刻会偏移 | 首版接受。影响仅是额度重置时刻，不影响功能正确性。若需强制对齐，在代码中显式用 `Asia/Shanghai` 而非系统本地时区 |
 | C-2 | 缓存目录不做清理 | 长期增长 | 首版接受；每月新增约几十万字符，量级可控 |
 | C-3 | 每次命中都读取整个文件到内存 | 内存峰值等于文件大小 | 首版接受（单文件几十 KB） |
@@ -458,7 +466,7 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|---|---|
 | `site/` | 前端全部发布物：index.html、logic.js、sw.js、manifest.json、icon.png、materials.json、audio/ | 是（rsync 源） | 是（audio 除外） |
 | `tools/` | 仅在 Mac mini 上运行的脚本：validate.py、build_audio.py、qa_audio.py、voice_compare.py、clean_orphans.py、check_secrets.sh、test_logic.mjs | **否** | 是 |
-| `server/` | VPS 配置副本：tts_proxy.py、aapt-tts.service、caddy-apt.conf.example | **否**（另行 scp 到 VPS） | 是 |
+| `server/` | VPS 配置副本：tts_proxy.py、apt-tts.service、caddy-apt.conf.example | **否**（另行 scp 到 VPS） | 是 |
 | `reports/` | 质检报告、盲听答案记录 | 否 | 否 |
 | `docs/` | DESIGN.md、CONTRACT.md、TASKS.md、acceptance.md | 否 | 是 |
 | `.env` | 凭据 | 否 | **否** |
@@ -481,7 +489,7 @@ VPS 上已有服务，本项目不得干扰：
 | 3 合成 | `python3 tools/build_audio.py` | 是，已存在文件跳过 | 429 退避重试；4xx 中止并提示检查 key 与 region |
 | 4 质检 | `python3 tools/qa_audio.py` | 是，结果按音频名缓存 | 输出差异报告，人工试听确认 |
 | 5 本地预览 | `python3 -m http.server -d site 8000` | 不适用 | 手测五页与三模式 |
-| 6 发布 | `./deploy.sh`（内部即 validate、核对wa 完整性、`rsync -av site/ $VPS:/var/www/apt/`、curl 核对线上 version） | 是，增量传输 | 传输中断可重跑 |
+| 6 发布 | `./deploy.sh`，内部共 5 步：① `validate.py` → ② 检查音频齐全（`validate.py --audio` + 每课 `wa` 与 `words` 等长、`sents` 已生成）→ ③ `rsync -av -e "ssh -p $VPS_SSH_PORT" site/ $VPS:$REMOTE_DIR/`（走 2222，不走被封的公网 22）→ ④ `curl` 取线上 `materials.json` 并核对 `version` 与本地一致 → ⑤ 抽查首页 HTTP 200。线上域名取 `SITE_HOST`（默认 `apt.example.com`），另可用 `VPS`、`VPS_SSH_PORT`（默认 2222）、`VPS_SSH_KEY`（可选私钥）、`REMOTE_DIR` 覆写 | 是，增量传输；任一步失败即中止（非 0 退出） | 传输中断可重跑 |
 | 7 验证 | 浏览器打开线上地址，抽查一课 | 不适用 | 异常回滚（见 15.4） |
 
 **rsync 不得带 `--delete`**：删除远端文件是独立决策，须经人工确认（用 `tools/clean_orphans.py` 显式执行），不能由发布命令隐式触发。
@@ -533,7 +541,7 @@ VPS 上已有服务，本项目不得干扰：
 
 | 字段 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
-| `voice` | 文本 | `pt-PT` | 备用发音语言，仅在无音频文件时使用 |
+| `voice` | 文本 | `pt-PT` | 历史遗留字段。系统语音（`speechSynthesis`）路径已整条移除，该字段当前**无播放用途**；迁移时仍会补默认值 |
 | `goalW` | 数 | **5** | 每日新词目标。原默认 10 偏高，一年累计 3650 词难以天天坚持 |
 | `goalMin` | 数 | **15** | 每日阅读目标分钟。原默认 20 偏高 |
 | `revBatch` | 数 | **30** | 每轮复习上限。一轮 30 个比一次性 80 个更可完成 |
@@ -550,8 +558,11 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|---|
 | `id` | 数 | 单调递增，由 `seq` 游标分配，不重复 |
 | `pt` | 文本 | 非空 |
+| `en` | 文本 | 英文释义，可为空串（M6）。为空时前端只显示中文 |
 | `zh` | 文本 | 非空 |
 | `ex` | 文本 | 可为空串 |
+| `ff` | 文本 | 假朋友说明，可为空串。非空即渲染橙色标签；**带 `ff` 的课文必须同时有 `reviewed`**，否则 validate.py 报错 |
+| `upd` | 数 | 最后修改时间（毫秒），新增/复习/删除时更新；为同步预留 |
 | `a` | 文本 | 可为空串（无预生成音频时走代理） |
 | `box` | 数 | 0 至 6 |
 | `lapse` | 数 | 累计「没记住」次数，**只增不减**（与 box 语义不同，见下）。缺省视为 0 |
@@ -589,7 +600,7 @@ VPS 上已有服务，本项目不得干扰：
 
 | 触发条件 | 动作 |
 |---|---|
-| 检测到无版本标记 | 备用发音设为欧洲葡语，写入版本标记，保存 |
+| 检测到无版本标记 | 补齐 `set.voice` 默认值，写入 `set.schema = 4`，保存 |
 | 结构缺失字段 | 渲染时按缺省值处理（`lessons`、`seq` 等自动补齐） |
 
 **约定**：前端不写迁移分支代码，只做一次性字段补齐，避免多版本逻辑长期堆积。
@@ -615,19 +626,13 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|---|
 | 页面与脚本（html、js） | 联网优先，失败回退缓存并忽略查询串 | 联网即更新，无需改版本号 |
 | `materials.json`、`manifest.json`、`icon.png` | 联网优先，失败回退缓存并忽略查询串 | 新课文要能自动出现 |
-| `/audio/*.mp3` | 缓存优先，**忽略查询串** | 内容不可变，且部分 URL 带缓存参数 |
-| `/api/tts?t=<文本>` | 缓存优先，**禁止忽略查询串** | 查询串就是文本本身 |
+| `/audio/*.mp3` | **不经过 Service Worker**，交给浏览器 HTTP 缓存 | iOS 播放音频必发 Range 请求、服务端返回 206，SW 若缓存局部响应会导致播不出声；服务端已设 `immutable` 长缓存 |
+| `/api/tts`（**POST**） | **不拦截、不缓存** | SW 只处理 GET 请求；合成结果由代理落盘缓存，前端另有 `TTS_MEM` 内存去重 |
 | 非 GET 请求 | 不拦截 | 无此需求 |
 
-**`ignoreSearch` 的适用范围必须严格区分**（这条极易被"统一"改错）：
+**`ignoreSearch` 只用于页面类的 GET 资源**（页面、脚本、JSON、图标）：这些资源的查询串只用于区分版本，忽略后可正确命中缓存。
 
-| 资源 | 是否忽略查询串 | 忽略的后果 |
-|---|---|---|
-| 页面、脚本、JSON、图标 | 是 | 无影响。这些资源的查询串只用于区分版本，忽略后可正确命中缓存 |
-| 音频文件 | 是 | 无影响。音频按散列命名，URL 形态固定 |
-| `/api/tts` | **否** | 所有单词都会播放同一段音频（命中第一条单词的缓存），发音完全错乱 |
-
-同理，`/api/tts` 的响应虽然是音频，但它的缓存身份由查询串决定，不能套用「音频类资源缓存优先」这条规则的 ignoreSearch 部分。缓存优先本身对它是正确的，错的是忽略查询串。
+`/api/tts` 已改为 POST，不再是可缓存资源：既没有查询串，也不进 Cache Storage。前端同一文本不重复合成靠内存里的 `TTS_MEM`，代理侧靠 `sha1(声音|文本)` 落盘缓存。
 
 ### 12.2 更新契约
 
@@ -667,8 +672,8 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|
 | 代理端口 | 仅监听回环地址 |
 | 代理入口 | 必须经 Caddy，可加共享令牌进一步收紧 |
-| 限流 | 必配，防止单 IP 刷额度 |
-| 每日上限 | 必配，双保险 |
+| 限流 | **首版未配**。Caddy 无内建限流、也未装 `caddy-ratelimit` 插件；唯一兜底是代理的每日 5000 字符上限（超出返回 429）。这是已知暴露面，见 9.4 C-4 |
+| 每日上限 | 必配（5000 字符），是本项目实际生效的唯一额度保护 |
 | 管理入口 | SSH 限制来源（可选） |
 
 ### 13.3 输入与渲染
@@ -711,9 +716,9 @@ VPS 上已有服务，本项目不得干扰：
 | 代理 | 保留默认错误日志，不记录请求文本（含学习内容，隐私） |
 | 构建脚本 | 输出每篇课文 id、句数、本次字符数 |
 | 质检脚本 | 输出差异清单，不输出音频内容 |
-| 访问日志 | Caddy 默认记录请求 URI，**含 `/api/tts?t=` 查询串即学生输入的学习文本**。已用 `log_skip /api/` 跳过该路径 |
+| 访问日志 | `/api/tts` 已改 POST，请求体（学生学习文本）本就不进 URI；Caddy 仍可能记录路径。已用 `log_skip /api/*` 跳过该路径。代理侧覆写 `log_message`，只输出方法、路径与状态码 |
 
-**隐私风险已处置**：Caddyfile 里对 `/api/*` 加了 `log_skip`，该路径不再进访问日志。除此之外仍需注意：若将来开启 Caddy 管理口 `127.0.0.1:2019` 或加调试日志，仍不得把查询串打进日志。
+**隐私风险已处置**：Caddyfile 里对 `/api/*` 加了 `log_skip`，该路径不再进访问日志。注意 `/api/tts` 的请求体本身就是学习内容，POST 让它不进 URI；代理侧的 `log_message` 也已脱敏，只记方法、路径与状态码。若将来开启 Caddy 管理口 `127.0.0.1:2019` 或加调试日志，仍不得把请求文本打进日志。
 
 ### 14.3 备份
 
@@ -735,16 +740,16 @@ VPS 上已有服务，本项目不得干扰：
 
 | 故障 | 用户侧表现 | 系统行为 | 恢复条件 |
 |---|---|---|---|
-| Azure 不可用 | 发音退回系统语音 | 代理返回 502，前端静默降级 | Azure 恢复后自动 |
-| 代理进程挂掉 | 同上 | systemd 自动重启 | 数十秒内 |
-| 每日额度用尽 | 新词首次发音退回系统语音 | 代理返回 429 | 次日零点重置 |
-| 超出日限额 | 退回系统语音 | 代理返回 429 | 次日重置（注意 VPS 时区，见 C-1b） |
-| 磁盘写满 | 新词发音退回系统语音 | 写入失败返回 502 | 清理空间 |
-| 音频文件丢失 | 该句退回代理或系统语音 | 按 6.3 引用链降级 | 重跑构建脚本补齐 |
+| Azure 不可用 | 生词不发声（静默） | 代理返回 502，前端静默失败；句子预生成音频不受影响 | Azure 恢复后自动 |
+| 代理进程挂掉 | 生词不发声（静默） | systemd 自动重启 | 数十秒内 |
+| 每日额度用尽 | 生词不发声（静默） | 代理返回 429 | 次日零点重置 |
+| 超出日限额 | 生词不发声（静默） | 代理返回 429 | 次日重置（注意 VPS 时区，见 C-1b） |
+| 磁盘写满 | 生词不发声（静默） | 写入失败返回 502 | 清理空间 |
+| 音频文件丢失 | 该句静默不发声（句子没有兜底） | 按 6.2 的引用约定，句子不走代理 | 重跑构建脚本补齐 |
 | `materials.json` 拉取失败 | 课文列表为缓存版本 | 缓存回退 | 网络恢复 |
-| 完全离线 | 全部功能可用，仅发音可能受限 | 缓存与服务 Worker 接管 | 网络恢复 |
+| 完全离线 | 全部功能可用，仅发音受限 | 缓存与服务 Worker 接管 | 网络恢复 |
 | Caddyfile 配置错误 | 站点不可访问（含 lababa） | `caddy validate` 必须在 reload 前通过 | 恢复备份后 reload |
-| 证书过期 | 站点不可访问 | certbot 自动续期 | 自动 |
+| 证书过期 | 站点不可访问 | Caddy 自动续期（不跑 certbot） | 自动 |
 
 **统一原则**：任何单一依赖故障都不应导致 App 不可用。发音是可降级能力，学习数据必须始终可读。
 
@@ -781,15 +786,15 @@ VPS 上已有服务，本项目不得干扰：
 |---|---|---|
 | 1 建仓 | 在 Gitea 建 `yourname/apt`（**private**），按 `REPO-MAP.md` 登记流程加一行 | 仓库必须 private。参照 lababa 是 public导致过凭据风险，本项目含Azure 密钥相关配置，绝不能public |
 | 2 克隆到 M2 | M2 上 `git clone` 到 `~/apt` | M2 的 Gitea **SSH key 未授权**（见 `machines/mac-mini-m2.md`），走 HTTPS + token，或先补 SSH key |
-| 3 目录就位 | 按 9.1 建 `site/` `tools/` `server/` `docs/` | 脚本一律不进 `site/` |
+| 3 目录就位 | 按 10.1 建 `site/` `tools/` `server/` `docs/` | 脚本一律不进 `site/` |
 | 4 本地验证 | `python3 -m http.server -d site 8000` | 五页可开即可 |
 | 5 生成音频 | `python3 tools/build_audio.py` | 幂等；密钥从 M2 的 `.env` 读|
-| 6 上传静态物 | `rsync -av site/ ubuntu@203.0.113.10:/home/ubuntu/pt/`（**不带 `--delete`**） | 先只传除 `audio/` 外的一切 |
-| 7 建 VPS 目录 | `sudo mkdir -p /home/ubuntu/pt` 并 `chown ubuntu` | |
-| 8 部署代理 | 放 `/opt/apt-tts/tts_proxy.py` + `/etc/apt-tts.env`（600）+ unit（见 15.2） | 先 `curl` 本地接口自测 |
+| 6 上传静态物 | `rsync -av site/ ubuntu@203.0.113.10:/var/www/apt/`（**不带 `--delete`**） | 先只传除 `audio/` 外的一切 |
+| 7 建 VPS 目录 | `sudo mkdir -p /var/www/apt` 并 `chown ubuntu` | |
+| 8 部署代理 | 放 `/opt/apt-tts/tts_proxy.py` + `/etc/apt-tts.env`（600）+ unit（见 16.2） | 先 `curl` 本地接口自测 |
 | 9 改 Caddyfile | 备份后加 `apt.example.com` 站点块（见下方样例） | **只加站点块，不动lababa 那个块** |
 | 10 校验重载 | `caddy validate --config /etc/caddy/Caddyfile` → `systemctl reload caddy` | 校验失败绝不 reload |
-| 11 上传音频 | `rsync -av site/audio/ ubuntu@203.0.113.10:/home/ubuntu/pt/audio/` | 体积大，分批 |
+| 11 上传音频 | `rsync -av site/audio/ ubuntu@203.0.113.10:/var/www/apt/audio/` | 体积大，分批 |
 | 12 验收 | 跑 16.1 的 I1–I10 | |
 
 **Caddyfile 新增块**（追加到现有 `/etc/caddy/Caddyfile`，lababa 块不动）：
@@ -799,7 +804,7 @@ VPS 上已有服务，本项目不得干扰：
 apt.example.com {
 	encode zstd gzip
 
-	root * /home/ubuntu/pt
+	root * /var/www/apt
 	file_server
 
 	# Service Worker 绝不能进缓存：命中缓存 = 更新最长一天拿不到
@@ -807,14 +812,14 @@ apt.example.com {
 	header @sw Cache-Control "no-cache, no-store, must-revalidate"
 
 	# 页面与数据：每次回源，保证新课文自动出现
-	@data path / /index.html /materials.json /manifest.json
+	@data path / /index.html /logic.js /materials.json /manifest.json
 	header @data Cache-Control "no-cache"
 
 	# 音频内容不可变，长缓存
 	@audio path /audio/*
 	header @audio Cache-Control "public, max-age=31536000, immutable"
 
-	# 发音代理：限流 + 转发 + 关闭访问日志（查询串含学生学习内容）
+	# 发音代理：转发 + 关闭访问日志（请求体是学生学习内容）
 	@api path /api/*
 	handle @api {
 		request_body {
@@ -822,7 +827,7 @@ apt.example.com {
 		}
 		reverse_proxy 127.0.0.1:8787
 	}
-	log_skip /api/
+	log_skip /api/*
 }
 ```
 
@@ -830,7 +835,7 @@ apt.example.com {
 
 | nginx 概念 | Caddy 对应 | 备注 |
 |---|---|---|
-| `limit_req_zone` + `limit_req` | **无内建限流** | 需 `caddy-ratelimit` 插件；本项目首版不装插件，改用本地代理自身的日限额 + 突发控制（见 8.2） |
+| `limit_req_zone` + `limit_req` | **无内建限流** | 需 `caddy-ratelimit` 插件；本项目首版不装插件，唯一兜底是代理自身的每日 5000 字符上限（见 9.2） |
 | `proxy_pass` | `reverse_proxy` | |
 | `add_header` | `header` | |
 | `try_files` | `try_files` | |
@@ -847,7 +852,7 @@ apt.example.com {
 |---|---|
 | 配置文件 | `/opt/apt-tts/tts_proxy.py` |
 | 环境文件 | `/etc/apt-tts.env`，权限 600 |
-| systemd 单元 | `/etc/systemd/system/aapt-tts.service` |
+| systemd 单元 | `/etc/systemd/system/apt-tts.service` |
 | 状态目录 | 由 `StateDirectory=apt-tts` 自动创建 |
 | 启动顺序 | `After=network-online.target` |
 | 重启策略 | `Restart=always` |
@@ -859,7 +864,7 @@ apt.example.com {
 Mac mini: 编辑 materials.json
         → build_audio.py（幂等，合成新增音频）
         → qa_audio.py（质检差异清单）
-        → rsync -av site/ user@apt.example.com:/var/www/apt/
+        → ./deploy.sh（validate → 音频齐全 → rsync → 核对线上 version → 抽查首页 200）
         → 浏览器抽查线上
 学生: 联网打开 App → 看到新课文
 ```
@@ -889,14 +894,14 @@ Mac mini: 编辑 materials.json
 | 编号 | 检查项 | 判定 |
 |---|---|---|
 | I1 | 子域名 HTTPS 可访问 | 状态 200，无证书告警 |
-| I2 | 五个静态文件均可下载 | 全部 200，图标非空 |
-| I3 | `/api/tts` 自测 | 返回可播放的 MP3，非空 |
+| I2 | 六个静态文件均可下载（index.html、logic.js、sw.js、manifest.json、materials.json、icon.png） | 全部 200，图标非空 |
+| I3 | `/api/tts` 自测 | `curl -X POST --data 'olá' https://apt.example.com/api/tts` 返回可播放的 MP3，非空 |
 | I4 | Caddy 配置语法 | `caddy validate --config /etc/caddy/Caddyfile` 通过 |
-| I5 | 证书续期 | certbot timer 已启用 |
+| I5 | 证书续期 | Caddy 自动申请与续期正常（**不跑 certbot**）：`systemctl status caddy` 无证书错误，到期日正常滚动 |
 | I6 | 代理仅本地监听 | 外部无法直连 8787 |
 | I7 | 环境文件权限 | `/etc/apt-tts.env` 为 600，且 VPS 按低信任主机对待（不持有任何机队凭据） |
 | I8 | 服务已设为开机自启 | `systemctl is-enabled` 返回 enabled |
-| I9 | 限流生效 | 连续快速请求返回 503 或 429 |
+| I9 | 日限额兜底 | 单日新合成超过 5000 字符后返回 429。**Caddy 无内建限流、未装插件**，不存在 503 形式的限流 |
 | I10 | 仓库不含密钥 | 检查历史与工作区 |
 
 ### 17.2 内容验收
@@ -918,7 +923,7 @@ Mac mini: 编辑 materials.json
 | 编号 | 检查项 | 判定 |
 |---|---|---|
 | A16 | 断网后打开 | 五页可用，已缓存课文可读 |
-| A17 | 弱网（限速）下发 | 快速操作不卡死，音频逐级降级 |
+| A17 | 弱网（限速）下发 | 快速操作不卡死，无音频时静默不发声（生词走代理、句子无兜底），不报错 |
 | A18 | 连续两次发音同一词 | 第二次命中缓存，响应更快 |
 | A19 | 添加词后立即发音 | 走代理合成成功 |
 | A20 | 刷新后跟读录音 | 明确丢失（首版既定行为），不报错 |
@@ -1009,7 +1014,7 @@ Mac mini: 编辑 materials.json
 
 | 文件 | 说明 |
 |---|---|
-| `tools/validate.py` | 材料数据校验（CONTRACT 5.4） |
+| `tools/validate.py` | 材料数据校验（CONTRACT 6.4） |
 | `tools/build_audio.py` | 批量合成 |
 | `tools/qa_audio.py` | ASR 回读质检 |
 | `tools/voice_compare.py` | 音色盲听对比页生成 |
@@ -1022,7 +1027,7 @@ Mac mini: 编辑 materials.json
 | 文件 | 线上位置 |
 |---|---|
 | `server/tts_proxy.py` | `/opt/apt-tts/tts_proxy.py` |
-| `server/aapt-tts.service` | `/etc/systemd/system/aapt-tts.service` |
+| `server/apt-tts.service` | `/etc/systemd/system/apt-tts.service` |
 | `server/caddy-apt.conf.example` | 追加到 `/etc/caddy/Caddyfile`（单文件，无独立 include） |
 
 ### 不入 git

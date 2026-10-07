@@ -26,8 +26,8 @@
 3. **向后兼容**：localStorage 键固定为 `aptapp`。结构变更全部集中在 `migrate()` 里，按 `set.schema` 递增。代码里必须留一个读旧键 `ptapp` 的兜底分支。
 4. **发布边界**：`site/` 里只放发布物，脚本放 `tools/` 和 `server/`。
 5. **rsync 不带 `--delete`**。远端文件只由 `tools/clean_orphans.py` 显式清理。
-6. **`/api/tts` 的缓存匹配不得使用 `ignoreSearch`**。忽略查询串会导致所有单词播同一段音频。其余页面类资源可以忽略。
-7. **句子不走发音代理**。代理限 100 字符，课文句子超限会返回 400。句子降级链是「预生成音频 → 系统语音」，只有单词才走代理。
+6. **`/api/tts` 是 POST，不进 Service Worker 缓存**。sw.js 只拦截 GET 请求，POST 直接放行；前端用内存 `TTS_MEM` 按文本去重，代理侧按 `sha1(声音|文本)` 落盘缓存。页面类 GET 资源仍可忽略查询串。
+7. **句子不走发音代理**。代理限 100 字符，课文句子超限会返回 400。句子只有「预生成音频」这一条路，没有兜底（无音频则静默不发声）；只有单词才走代理，链路是「预生成音频 → `POST /api/tts`」。**系统语音（`speechSynthesis`）已整条移除**，任何地方都不要再调用它。
 8. **真机验证**：每个前端任务都必须在 iPhone 的「主屏幕 App」模式下验证。桌面浏览器和模拟器的结果不算数。
 9. **不要装 nginx，不要跑 certbot**。线上 VPS 已装 **Caddy v2.11.4** 并在跑 lababa 应用，80/443 已占。配置一律改 `/etc/caddy/Caddyfile`，改前必须备份，`caddy validate` 通过后才 reload。
 10. **合成与质检只在 Mac mini M2 上跑**。VPS 只有 1.9 GiB 内存且已跑 Caddy + lababa + PostgreSQL，不要在上面跑音频合成或 Whisper。M2 地址 `100.64.0.2`，用户 `dail`。
@@ -39,12 +39,12 @@
 
 ## 执行顺序
 
-**M0 → M1 → M2 → M5 → M6 → M3 → M4**
+**M0 → M1 → M2 → M5 → M6 → M3 → M4**（均已跑完）；上线后追加 **M7 质量修复**，同样已完成
 
 - **M0** 基线入仓（仓库结构、.gitignore、密钥扫描、Gitea 私有仓）
 - **M1** 上线最小闭环（VPS 配置、部署、盲听、首批音频）
 - **M2** 前端修补（schema 4 迁移、防丢数据、触控字号、降级链、渲染安全）
-- **M5** 坚持率改进（每轮上限、积压处理、下一步卡片、复习反馈、错词本、周目标、快速听写、逐句中文）
+- **M5** 坚持率改进（每轮上限、积压处理、下一步卡片、复习反馈、错词本、周目标、快速听写、逐句译文）
 - **M6** 双释义（格式兼容、显示设置、英文释义、批量导入、假朋友、搜索）
 - **M3** 内容工厂工具（validate 已完成、build_audio 已完成、qa_audio、clean_orphans、deploy 已完成）
 - **M4** 测试与验收（纯函数已拆分，48 项通过；待真机验收记录）
@@ -62,6 +62,11 @@ python3 tools/build_audio.py --limit 1 --slow    # 单篇 + 慢速版
 # 跑纯函数测试
 node tools/test_logic.mjs
 
+# 跑真实渲染测试（无头 Chrome 真加载页面并断言，需要本机装有 Chrome）
+python3 -m http.server 8123 -d site &
+node tools/test_render.mjs http://127.0.0.1:8123/
+node tools/test_render.mjs https://apt.example.com/    # 也可以直接打线上
+
 # 密钥扫描
 sh tools/check_secrets.sh
 
@@ -72,18 +77,18 @@ python3 -m http.server 8000 -d site
 ./deploy.sh
 ```
 
-## 内容格式（docs/DESIGN.md 第 6 章）
+## 内容格式（docs/DESIGN.md 第 10 章）
 
 两种格式都支持，校验与渲染通过 `norm_word` / `norm_trans` 归一：
 
-| | 新格式（M6 起） | 旧格式（首批未重写时） |
+| | 新格式（M6 起，目标格式） | 旧格式（首批未重写时，仍兼容） |
 |---|---|---|
 | 生词 | `{pt, en, zh, ex, ff?}` | `[pt, zh, ex?]` |
-| 全文翻译 | `{en, zh}` | 字符串（视为中文） |
-| 逐句翻译 | `trans_lines: [{en, zh}]` 或 `en_lines` + `zh_lines` | `zh_lines` |
+| 全文翻译 | **v2 起删除**，由前端 `transFromSents()` 按段落拼 `sents[].en` / `sents[].zh` | 同左（文件里若仍有 `trans`，前端优先用它） |
+| 逐句翻译 | **`sents[].en` / `sents[].zh`（唯一来源）** | 同左 |
 | 标题 | `en` 字段 | 无 |
 
-`ff`（假朋友）为可选字段，填了就显示橙色标签。
+`ff`（假朋友）为可选字段，填了就显示橙色标签。**生词带 `ff` 的课文必须同时有 `reviewed`（如 `"reviewed": "2026-10-07"`）**，否则 `tools/validate.py` 直接报错、退出码 1 —— 假朋友最容易标错，必须人工确认。
 
 ## Azure TTS
 

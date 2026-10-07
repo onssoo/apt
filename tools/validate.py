@@ -63,6 +63,101 @@ def norm_trans(t):
     return {"en": "", "zh": ""}
 
 
+# ---------- 欧葡纯度：巴葡用法黑名单（review 2026-10-07 M9 第 1 条） ----------
+# AI 生成葡语时最常见的错误是混入巴葡。这里只扫**葡语字段**：
+# text / sents[].t / words[].pt / words[].ex / qs。en、zh、note、ff 不扫 ——
+# 那些地方本来就会写「巴西说 ônibus」做对照，扫了全是误报。
+
+BR_PATTERNS = [
+    (re.compile(r"\bônibus\b", re.I), "巴士：欧葡用 autocarro"),
+    (re.compile(r"\btrem\b", re.I), "火车：欧葡用 comboio"),
+    (re.compile(r"\bcelular\b", re.I), "手机：欧葡用 telemóvel"),
+    (re.compile(r"\bcafé da manhã\b", re.I), "早餐：欧葡用 pequeno-almoço"),
+    (re.compile(r"\bgeladeira\b", re.I), "冰箱：欧葡用 frigorífico"),
+    (re.compile(r"\bbanheiro\b", re.I), "浴室：欧葡用 casa de banho（欧葡 banheiro 指浴室，不是厕所）"),
+    (re.compile(r"\bgarçom\b", re.I), "侍者：欧葡用 empregado de mesa"),
+    (re.compile(r"\b(estou|está|estamos|estão|estás|estava)\s+\w+ndo\b", re.I),
+     "进行时：欧葡用 estar a + 不定式（estou a fazer），不用 estou fazendo"),
+    (re.compile(r"\bvocê\b", re.I), "você：欧葡口语少用，常说 o senhor / a senhora 或省略主语"),
+    (re.compile(r"\blegal\b", re.I), "legal：表示「好、酷」是巴葡；欧葡 legal 是「合法的」"),
+]
+
+
+def check_brazilian(iss, tag, l):
+    """扫葡语正文里的巴葡用法，只提醒不阻断。"""
+    chunks = [("text", str(l.get("text") or ""))]
+    for i, sn in enumerate(l.get("sents") or []):
+        if isinstance(sn, dict):
+            chunks.append((f"sents[{i}].t", str(sn.get("t") or "")))
+    for i, w in enumerate(l.get("words") or []):
+        nw = norm_word(w)
+        chunks.append((f"words[{i}].pt", nw["pt"]))
+        if nw["ex"]:
+            chunks.append((f"words[{i}].ex", nw["ex"]))
+    for i, q in enumerate(l.get("qs") or []):
+        if isinstance(q, list):
+            for j, part in enumerate(q):
+                chunks.append((f"qs[{i}][{j}]", str(part)))
+
+    seen = set()
+    for where, text in chunks:
+        for rx, why in BR_PATTERNS:
+            m = rx.search(text)
+            if not m:
+                continue
+            key = (m.group(0).lower(), why)
+            if key in seen:
+                continue
+            seen.add(key)
+            iss.warn(tag, f"{where} 出现巴葡用法 {m.group(0)!r} —— {why}")
+
+
+def check_sents_alignment(iss, tag, l):
+    """sents 作为逐句唯一来源时，同一段的句子拼起来必须与 text 的段落逐字一致。
+
+    这是句子拆分与正文对齐的唯一保证：拆错一个标点，这里就报错。
+    """
+    sents = l.get("sents")
+    if not isinstance(sents, list) or not sents:
+        return
+    paras = str(l.get("text") or "").split("\n")
+    groups = {}
+    for i, sn in enumerate(sents):
+        if not isinstance(sn, dict):
+            continue
+        t = str(sn.get("t") or "").strip()
+        if not t:
+            continue
+        groups.setdefault(int(sn.get("p") or 0), []).append(t)
+
+    for p, para in enumerate(paras):
+        if not para.strip():
+            continue
+        if p not in groups:
+            iss.err(tag, f"正文第 {p} 段没有对应的 sents（段落号 p 从 0 开始）")
+    for p, ts in sorted(groups.items()):
+        if p < 0 or p >= len(paras):
+            iss.err(tag, f"sents 的段落号 p={p} 超出正文段落数 {len(paras)}")
+            continue
+        joined = re.sub(r"\s+", " ", " ".join(ts)).strip()
+        expect = re.sub(r"\s+", " ", paras[p]).strip()
+        if joined != expect:
+            iss.err(
+                tag,
+                f"第 {p} 段句子拼接与正文不一致：\n"
+                f"      sents: {joined}\n"
+                f"      text : {expect}",
+            )
+
+    # 逐句英中是新的目标格式，缺了只是提醒（旧课文还没重写）
+    no_en = sum(1 for sn in sents if isinstance(sn, dict) and not str(sn.get("en") or "").strip())
+    no_zh = sum(1 for sn in sents if isinstance(sn, dict) and not str(sn.get("zh") or "").strip())
+    if no_en:
+        iss.warn(tag, f"{no_en}/{len(sents)} 句缺英文（sents[].en）")
+    if no_zh:
+        iss.warn(tag, f"{no_zh}/{len(sents)} 句缺中文（sents[].zh）")
+
+
 class Issues:
     """收集问题。按严重程度分两级：error 阻断，warn 仅提示。"""
 
@@ -154,11 +249,17 @@ def check_lesson(iss, idx, l, seen_ids):
     if not isinstance(l.get("min"), int) or l.get("min", 0) <= 0:
         iss.warn(tag, f"min 应为正整数，当前 {l.get('min')!r}")
 
-    # 全文翻译：兼容字符串（旧）与对象（新）
+    # 全文翻译：兼容字符串（旧）与对象（新）。
+    # v2 起 sents 是逐句翻译的唯一来源，trans 可以完全不写 —— 前端会用
+    # transFromSents() 按段落拼出来。所以只有在 sents 也给不出译文时才提醒。
     paras = len([p for p in str(l.get("text", "")).split("\n") if p.strip()])
     tr = norm_trans(l.get("trans"))
+    _ss = [sn for sn in (l.get("sents") or []) if isinstance(sn, dict)]
+    sents_en = bool(_ss) and all(str(sn.get("en") or "").strip() for sn in _ss)
+    sents_zh = bool(_ss) and all(str(sn.get("zh") or "").strip() for sn in _ss)
     if not tr["en"] and not tr["zh"]:
-        iss.warn(tag, "缺 trans（全文翻译，至少要en或zh 一份）")
+        if not (sents_en and sents_zh):
+            iss.warn(tag, "缺 trans（全文翻译），且 sents 也拼不出完整译文，至少要有一份")
     else:
         if not tr["en"]:
             iss.warn(tag, "trans 缺英文（en）")
@@ -176,6 +277,10 @@ def check_lesson(iss, idx, l, seen_ids):
     ff_words = [w for w in (l.get("words") or []) if isinstance(w, dict) and w.get("ff")]
     if ff_words:
         print(f"  {tag}含 {len(ff_words)} 个假朋友标注")
+        # 假朋友最容易乱标（L01 第一批四个全是错的），必须人工过一眼才放行
+        if not str(l.get("reviewed") or "").strip():
+            iss.err(tag, f"有 {len(ff_words)} 个假朋友标注（ff）但缺 reviewed 字段。"
+                         f"假朋友必须人工确认过，请在课文里加 reviewed: \"YYYY-MM-DD\"")
 
     # 生词：每项 [葡语, 释义, 例句?]
     words = l.get("words")
@@ -220,14 +325,18 @@ def check_lesson(iss, idx, l, seen_ids):
         if not isinstance(sents, list):
             iss.err(tag, "sents 必须是数组")
         else:
+            no_audio = 0
             for i, sn in enumerate(sents):
                 if not isinstance(sn, dict) or not sn.get("t"):
                     iss.err(tag, f"sents[{i}] 缺少 t")
                     continue
                 if "a" not in sn:
-                    iss.warn(tag, f"sents[{i}] 未生成音频引用（跑一次 build_audio.py）")
-                elif "zh" in sn and sn["zh"]:
-                    pass  # 可选字段，有就对
+                    no_audio += 1
+            if no_audio:
+                iss.warn(tag, f"{no_audio}/{len(sents)} 句未生成音频引用（跑一次 build_audio.py）")
+            check_sents_alignment(iss, tag, l)
+
+    check_brazilian(iss, tag, l)
     return True
 
 

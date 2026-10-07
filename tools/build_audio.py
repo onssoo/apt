@@ -276,6 +276,38 @@ def attach_tr(sents, lesson):
 
 # ---------- 主流程 ----------
 
+def build_sents(lesson, voice_main, voice_second):
+    """确定这篇课文的句子列表。
+
+    **作者写了 sents 时以它为准**：拆句、分段和英中翻译由作者负责
+    （validate.py 会校验「同一段的 sents[].t 拼起来 == text 对应段落」），
+    这里只补音频，作者的字段（t/p/en/zh/sp）原样保留。
+
+    作者没写 sents 时退回自动拆句 + 挂翻译，行为与以前一致。
+
+    sp 字段：'b' = 对话里的第二角色，用 VOICE2；其余用主声音。
+    """
+    authored = lesson.get("sents")
+    if isinstance(authored, list) and authored:
+        out = []
+        for sn in authored:
+            if not isinstance(sn, dict) or not str(sn.get("t") or "").strip():
+                continue
+            item = dict(sn)                      # 作者字段一个都不丢
+            item["t"] = str(sn["t"]).strip()
+            item["p"] = int(sn.get("p") or 0)
+            item["speaker"] = "second" if str(sn.get("sp") or "").lower() == "b" else "main"
+            item.setdefault("en", "")
+            item.setdefault("zh", "")
+            out.append(item)
+        if out:
+            return out, f"作者 sents（{len(out)} 句）"
+        print("    [警告] sents 存在但没有可用句子，退回自动拆句", file=sys.stderr)
+
+    sents = split_sentences(lesson["text"], voice_main, voice_second)
+    return sents, attach_tr(sents, lesson)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="只处理前 N 篇，0 = 全部")
@@ -315,9 +347,8 @@ def main():
 
     for l in lessons:
         lid = l.get("id", "?")
-        # 构建句子并挂音频
-        sents = split_sentences(l["text"], voice_main, voice_voice2)
-        zh_note = attach_tr(sents, l)
+        # 构建句子并挂音频：作者写了 sents 就照他的，没写才自动拆句
+        sents, zh_note = build_sents(l, voice_main, voice_voice2)
 
         for sn in sents:
             v = voice_voice2 if sn["speaker"] == "second" else voice_main

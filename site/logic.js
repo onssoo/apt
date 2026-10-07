@@ -81,16 +81,59 @@ function takeBatch(words, limit, refDay) {
   return d.length > limit ? d.slice(0, limit) : d;
 }
 
+/**
+ * 按段落把逐句翻译拼成全文翻译。
+ *
+ * sents 是逐句翻译的唯一来源（M7-6）：不再单独维护 trans / trans_lines，
+ * 否则同一份译文存三遍迟早对不上。英文按句以空格连接，中文直接相连。
+ */
+function transFromSents(sents) {
+  const P = {};
+  (sents || []).forEach(s => {
+    if (!s || !s.t) return;
+    const p = s.p || 0;
+    (P[p] = P[p] || []).push(s);
+  });
+  const en = [], zh = [];
+  Object.keys(P).map(Number).sort((a, b) => a - b).forEach(p => {
+    const g = P[p];
+    const e = g.map(s => (s.en || '').trim()).filter(Boolean).join(' ');
+    const z = g.map(s => (s.zh || '').trim()).filter(Boolean).join('');
+    if (e) en.push(e);
+    if (z) zh.push(z);
+  });
+  return { en: en.join('\n'), zh: zh.join('\n') };
+}
+
+/**
+ * 快速听写的取句池：从「她读过的课文」里收集带音频的句子。
+ * 纯函数，不打乱顺序（洗牌由调用方做），便于测试。
+ * @param lessons 材料里的课文数组
+ * @param readIds 已读课文表（D.lessons），键为课文 id
+ * @param n 取多少句，默认 5
+ */
+function quickPool(lessons, readIds, n) {
+  const out = [];
+  (lessons || []).forEach(l => {
+    if (!l || !readIds || !readIds[l.id]) return;
+    (l.sents || []).forEach(s => { if (s && s.a) out.push(s); });
+  });
+  return out.slice(0, n > 0 ? n : 5);
+}
+
 // ---------- 连续打卡 ----------
 
 /**
  * 连续打卡天数。
  * 今天已打卡则从今天起数；否则从昨天起数（今天还没开始，不算断）。
+ *
+ * 注意不能写成「今天有没有记录」：rToday() 每次渲染都会 log() 建出
+ * 今天的空记录，所以记录总是存在但 done 为 false。必须看 done。
  */
-function streak(logs) {
+function streak(logs, refDate) {
   const L = logs || {};
-  const t = new Date();
-  if (!L[day(t)]) t.setDate(t.getDate() - 1);
+  const t = refDate ? new Date(refDate.getTime()) : new Date();
+  if (!(L[day(t)] && L[day(t)].done)) t.setDate(t.getDate() - 1);
   let n = 0;
   while (L[day(t)] && L[day(t)].done) {
     n++;
@@ -371,11 +414,13 @@ const API = {
   mondayOf: mondayOf,
   INT: INT, MASTERED_BOX: MASTERED_BOX,
   schedule: schedule, due: due, isBacklogged: isBacklogged, takeBatch: takeBatch,
+  quickPool: quickPool,
   streak: streak, weekCount: weekCount, weekMet: weekMet,
   nrm: nrm, base: base, cmpW: cmpW,
   splitS: splitS, say: say,
   DEFAULT_SHOW: DEFAULT_SHOW,
   normWord: normWord, normTrans: normTrans, gloss: gloss,
+  transFromSents: transFromSents,
   matchWord: matchWord, parseImportLine: parseImportLine,
   migrate: migrate, SCHEMA: SCHEMA,
 };
