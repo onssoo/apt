@@ -1,0 +1,21 @@
+# apt-sync —— 多设备同步服务。放/etc/systemd/system/apt-sync.service
+# 只监听 127.0.0.1:8788，由 Caddy 反代 /api/sync 与 /api/board。
+[Unit]
+Description=APT sync service (apt.example.com)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/apt-sync/sync_proxy.py
+DynamicUser=yes
+StateDirectory=apt-sync
+Environment=PORT=8788
+Environment=RATE_PER_MIN=120
+Restart=always
+RestartSec=3
+# 1.9 GiB 的机器，限制内存
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target

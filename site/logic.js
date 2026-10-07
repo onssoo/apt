@@ -407,6 +407,80 @@ function migrate(d) {
   return d;
 }
 
+// ---------- 多设备合并（M10-3） ----------
+
+/**
+ * 合并两份文档（本地 + 远端）。规则：
+ * - words：按 id 并集，`upd` 大的赢；没有 upd 当 0
+ * - del：墓碑按 id 并集，t 取大；合并后按墓碑删掉对应单词
+ * - logs：按日并集。计数（newW/rev/sh/dc）**取大不求和** —— 两台设备各自
+ *   练过同一天，求和会翻倍；阅读记录按 (标题,分钟,笔记) 去重后合并；done 取或
+ * - lessons：同一课取**更早**的读完日期
+ * - set：设置是每台设备自己的偏好，**以本地为准**；schema 取大
+ * - seq：取大，并且不小于现有数字 id 的最大值，避免新词撞号
+ *
+ * 硬规则：`box` 是熟练度、`lapse` 是历史失败次数，合并只做「整条取新」，
+ * 任何情况下都不去掉、不归零、不重置。
+ */
+function mergeDocs(a, b) {
+  const A = a || {}, B = b || {};
+  const out = { words: [], logs: {}, lessons: {}, set: {}, del: [], seq: 0 };
+
+  out.set = Object.assign({}, B.set || {}, A.set || {});     // 本地优先
+  out.set.schema = Math.max((A.set || {}).schema | 0, (B.set || {}).schema | 0) || SCHEMA;
+
+  const delMap = new Map();
+  [].concat(A.del || [], B.del || []).forEach(d => {
+    if (!d || d.id == null) return;
+    const k = String(d.id), cur = delMap.get(k);
+    if (!cur || (d.t | 0) > (cur.t | 0)) delMap.set(k, { id: d.id, t: d.t | 0 });
+  });
+  out.del = [...delMap.values()];
+
+  const wMap = new Map();
+  const putWord = w => {
+    if (!w || w.id == null) return;
+    const k = String(w.id), cur = wMap.get(k);
+    if (!cur || (w.upd | 0) >= (cur.upd | 0)) wMap.set(k, w);
+  };
+  (B.words || []).forEach(putWord);
+  (A.words || []).forEach(putWord);
+  out.words = [...wMap.values()].filter(w => !delMap.has(String(w.id)));
+
+  const days = new Set([].concat(Object.keys(A.logs || {}), Object.keys(B.logs || {})));
+  days.forEach(d => {
+    const x = (A.logs || {})[d] || {}, y = (B.logs || {})[d] || {};
+    const read = [], seen = new Set();
+    [].concat(x.read || [], y.read || []).forEach(r => {
+      const k = [r && r.title, r && r.min, r && r.note].join('\u0001');
+      if (seen.has(k)) return;
+      seen.add(k); read.push(r);
+    });
+    const day = {
+      read,
+      newW: Math.max(x.newW | 0, y.newW | 0),
+      rev: Math.max(x.rev | 0, y.rev | 0),
+      sh: Math.max(x.sh | 0, y.sh | 0),
+      dc: Math.max(x.dc | 0, y.dc | 0),
+      done: !!(x.done || y.done),
+    };
+    const at = Math.max(x.checkinAt | 0, y.checkinAt | 0);
+    if (at) day.checkinAt = at;
+    out.logs[d] = day;
+  });
+
+  const lids = new Set([].concat(Object.keys(A.lessons || {}), Object.keys(B.lessons || {})));
+  lids.forEach(id => {
+    const x = (A.lessons || {})[id], y = (B.lessons || {})[id];
+    out.lessons[id] = (x && y) ? (x < y ? x : y) : (x || y);
+  });
+
+  let maxNum = 0;
+  out.words.forEach(w => { const n = Number(w.id); if (Number.isFinite(n)) maxNum = Math.max(maxNum, n); });
+  out.seq = Math.max(A.seq | 0, B.seq | 0, maxNum);
+  return out;
+}
+
 // ---------- 导出 ----------
 
 const API = {
@@ -423,6 +497,7 @@ const API = {
   transFromSents: transFromSents,
   matchWord: matchWord, parseImportLine: parseImportLine,
   migrate: migrate, SCHEMA: SCHEMA,
+  mergeDocs: mergeDocs,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = API;

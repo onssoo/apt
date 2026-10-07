@@ -132,7 +132,10 @@ summary{font-weight:600;min-height:32px;cursor:pointer}
 <script src="logic.js"></script>
 <script>
 'use strict';
-const K = 'aptapp';   // 命名口径：不可改名
+const K_ANON = 'aptapp';   // 匿名档（命名口径：不可改名）
+// 绑定授权码之后换成 aptapp:<user>，一台设备上可以有多个档案互不污染
+let K = K_ANON;
+function keyFor(u) { return u ? 'aptapp:' + u : K_ANON; }
 const L = Logic;      // 纯函数层
 
 /* ---------- 数据与迁移 ---------- */
@@ -157,6 +160,17 @@ function load() {
   D = L.migrate(d || {});
   // 未做过的赋值：默认值只在 migrate 里给，这里不覆盖
   save();
+}
+
+/** 换档后重新读一遍数据并重画（M10-1）。 */
+function reloadProfile() {
+  D = null;
+  load();
+  const el = $('review'); if (el) el.innerHTML = '';
+  cur = null; Q = [];
+  if (typeof M !== 'undefined' && M) { try { backfillFromMaterials(); } catch (e) {} }
+  try { startRound(); } catch (e) {}
+  try { render(); } catch (e) {}
 }
 
 /** save() 带失败捕获（M2-2）。写入失败必须明确提示，否则数据静默丢失。 */
@@ -488,6 +502,7 @@ function checkin() {
   const okGoal = back || (m >= D.set.goalMin && lg.newW >= D.set.goalW);
   if (!okGoal && !confirm('还没达到今日目标，确定打卡吗？')) return;
   lg.done = true;
+  if (syncOn()) setTimeout(() => syncNow(), 100);   // 打卡后推一次（失败静默）
   lg.checkinAt = Date.now();
   save();
   rToday();
@@ -1127,6 +1142,7 @@ function ans(ok) {
  * 统计与设置
  * ================================================================ */
 function rStats() {
+  if (typeof D !== 'undefined' && D && D.set && D.set.boardOn) setTimeout(loadBoard, 0);
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth();
   // 周一开头，和「本周 x/5」的周目标口径一致（原来从周日起，两处对不上）
@@ -1179,6 +1195,24 @@ function rStats() {
       <label>每周达标天数</label>
       <input type="number" value="${D.set.weekGoal}" onchange="D.set.weekGoal=+this.value||5;save()">
     </details>
+  </div>
+
+  <div class="card"><h2>同步</h2>
+    ${syncOn() ? `
+      <p class="mu">档案 <b>${esc(currentUser())}</b> · 上次同步：${syncRelTime(D.set.lastSync)}</p>
+      ${D.set.lastSyncErr === '同步服务未启用'
+        ? `<p class="mu">同步服务还没启用，数据只存在这台设备上。</p>`
+        : (D.set.lastSyncErr ? `<div class="warnc">上次同步失败：${esc(D.set.lastSyncErr)}。会自动重试，不影响本机使用。</div>` : '')}
+      <button onclick="syncNow()">立即同步</button>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:14px">
+        <input type="checkbox" style="width:auto;min-height:0" ${D.set.boardOn ? 'checked' : ''}
+               onchange="toggleBoard(this.checked)">
+        <span>家庭打卡板</span></label>
+      <p class="mu">打开后，家里人在这个 App 里能看到你的<b>打卡状态和连续天数</b> ——
+        看不到你复习了哪些词、错了多少。默认关闭，只有你自己能打开。</p>
+      <div id="board" style="margin-top:10px"></div>` : `
+      <p class="mu">本机档案（没有绑定授权码）。用专属链接打开一次即可绑定，
+        之后 iPhone 与 iPad 会自动同步。</p>`}
   </div>
 
   <div class="card"><h2>数据备份</h2>
@@ -1341,34 +1375,144 @@ function doInstall() {
 }
 function closeWelcome() { $('welcome').classList.add('hide'); }
 
-/** 启动时处理授权码链接。 */
-function bootstrapInvite() {
+/** 读出这次打开要用的档案键。必须在 load() **之前**调用（M10-1）。 */
+let inviteInfo = { isNew: false, token: '' };
+function bindProfile() {
   const t = inviteToken();
-  let isNew = false;
   if (t) {
     const old = currentUser();
     if (old && old !== t) {
       // 同一台设备换了授权码：数据是按人分的，先问清楚再动
-      if (!confirm(`这台设备原来绑定的是 ${old}。要换成 ${t} 吗？\n（换人不会删除原数据，但界面会加载新用户的记录）`)) {
+      if (!confirm(`这台设备原来绑定的是 ${old}。要换成 ${t} 吗？\n（不会删除原数据，只是换成新档案）`)) {
         history.replaceState(null, '', location.pathname + location.search);
-        return;
+        K = keyFor(old);
+        return inviteInfo;
       }
     }
     try { localStorage.setItem(USER_KEY, t); } catch (e) {}
-    isNew = old !== t;
+    inviteInfo = { isNew: old !== t, token: t };
+    K = keyFor(t);
+
+    // 首次给这台设备绑定，而匿名档里已经有学习记录 → 问一句要不要带过来。
+    // 不静默迁移：这台设备也可能本来就是别人的。
+    try {
+      const hasNew = !!localStorage.getItem(K);
+      const anon = localStorage.getItem(K_ANON);
+      if (!hasNew && anon) {
+        const n = (JSON.parse(anon).words || []).length;
+        if (confirm(`这台设备上已有学习记录（${n} 个生词）。要把它归到「${t}」名下吗？\n确定＝带过去，取消＝从零开始（原记录仍在，不会丢）`)) {
+          localStorage.setItem(K, anon);
+        }
+      }
+    } catch (e) {}
     // 把片段从地址栏抹掉：避免她截图/转发时把码带出去
     history.replaceState(null, '', location.pathname + location.search);
+  } else {
+    K = keyFor(currentUser());
   }
-  // 有授权码，或者还没加到主屏 → 给一次引导
-  if (t || (isIOS() && !isStandalone() && !localStorage.getItem('aptwelcome'))) {
-    showWelcome(isNew);
+  return inviteInfo;
+}
+
+/** 启动后弹引导（安装步骤 + 麦克风授权）。 */
+function maybeShowWelcome() {
+  if (inviteInfo.token || (isIOS() && !isStandalone() && !localStorage.getItem('aptwelcome'))) {
+    showWelcome(inviteInfo.isNew);
     try { localStorage.setItem('aptwelcome', '1'); } catch (e) {}
   }
+}
+
+/* ---------- 多设备同步（M10-3 / M10-4 / M10-5） ----------
+ * 合并是**客户端**做的（服务端只是哑存储）：words 按 upd 取新、logs 按日并集、
+ * del 墓碑并集。规则在 logic.js 的 mergeDocs() 里，有单元测试。
+ *
+ * 失败必须静默：她在地铁上、断网、服务重启，都不该打断学习。
+ * 只是把原因记下来，等她在设置页里看。
+ */
+const SYNC_URL = 'api/sync';
+const BOARD_URL = 'api/board';
+let syncBusy = false;
+
+function syncOn() { return !!currentUser(); }
+
+function syncRelTime(ms) {
+  if (!ms) return '从未';
+  const m = Math.floor((Date.now() - ms) / 60000);
+  if (m < 1) return '刚刚';
+  if (m < 60) return m + ' 分钟前';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' 小时前';
+  return Math.floor(h / 24) + ' 天前';
+}
+
+async function syncNow() {
+  if (!syncOn() || syncBusy) return null;
+  syncBusy = true;
+  const t = currentUser();
+  const hdr = { Authorization: 'Bearer ' + t };
+  try {
+    const r = await fetch(SYNC_URL, { headers: hdr, cache: 'no-store' });
+    if (!r.ok) throw new Error('拉取失败 HTTP ' + r.status);
+    const j = await r.json();
+    if (j && j.doc) {
+      let remote = null;
+      try { remote = L.migrate(j.doc); } catch (e) { remote = null; }
+      if (remote) D = L.mergeDocs(D, remote);     // 本地优先，合并规则在 logic.js
+    }
+    D.set.lastSync = Date.now();
+    D.set.lastSyncErr = '';
+    save();
+
+    const body = { doc: D };
+    body.board = D.set.boardOn
+      ? { enabled: true, name: D.set.boardName || t, done: !!(log().done), streak: L.streak(D.logs) }
+      : { enabled: false, name: '', done: false, streak: 0 };
+    const p = await fetch(SYNC_URL, {
+      method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, hdr),
+      body: JSON.stringify(body), cache: 'no-store',
+    });
+    if (!p.ok) throw new Error('上传失败 HTTP ' + p.status);
+    render();
+    return true;
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : '未知错误';
+    // 服务还没部署时（404/501）不要说成「同步失败」吓人，写成「未启用」
+    D.set.lastSyncErr = /HTTP (404|501)/.test(msg) ? '同步服务未启用' : msg;
+    save();
+    render();
+    return false;
+  } finally {
+    syncBusy = false;
+  }
+}
+
+/** 家庭打卡板：默认关闭，只有她自己打开后别人才看得到。 */
+async function loadBoard() {
+  const el = $('board');
+  if (!el) return;
+  try {
+    const r = await fetch(BOARD_URL, { cache: 'no-store' });
+    const j = await r.json();
+    const es = (j && j.entries) || [];
+    el.innerHTML = es.length
+      ? es.map(e => `<div class="row" style="padding:6px 0"><b>${esc(e.name)}</b>
+          <span class="mu">${e.done ? '今天已打卡 ✓' : '今天还没打卡'} · 连续 ${e.streak} 天</span></div>`).join('')
+      : '<p class="mu">还没有人打开打卡板。</p>';
+  } catch (e) {
+    el.innerHTML = '<p class="mu">打卡板读不到（可能没联网）。</p>';
+  }
+}
+
+function toggleBoard(on) {
+  D.set.boardOn = !!on;
+  D.set.boardName = D.set.boardName || currentUser();
+  save(); rStats();
+  if (on) syncNow().then(loadBoard); else syncNow();
 }
 
 /* ---------- 启动 ---------- */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
+  if (syncOn()) setTimeout(() => syncNow(), 200);   // 回到前台补一次同步
   if (recOn) return;
   if (dOwner) return;   // 听写练习中不打断
   try { if (!tab) return; R[tab](); } catch (e) {}
@@ -1376,13 +1520,15 @@ document.addEventListener('visibilitychange', () => {
 
 // 系统语音检查已移除：那条兜底路径从来没被真正使用过（见文件上方的说明）。
 
+bindProfile();         // 先定档案（授权码链接）—— 必须在 load() 之前
 load();
 if (navigator.storage && navigator.storage.persist) {
   try { navigator.storage.persist(); } catch (e) {}
 }
 startRound();          // 预热：进入复习页时队列已就绪
 show('today');
-bootstrapInvite();     // 授权码链接 / 安装引导 / 麦克风授权
+maybeShowWelcome();    // 安装引导 + 麦克风授权
+if (syncOn()) setTimeout(() => syncNow(), 900);   // 启动后静默同步一次
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>

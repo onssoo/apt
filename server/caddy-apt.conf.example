@@ -34,6 +34,17 @@ apt.example.com {
 	@audio path /audio/*
 	header @audio Cache-Control "public, max-age=31536000, immutable"
 
+	# 同步服务（M10）：转发到本机 8788。
+	# ⚠️ 必须排在下面 @api 之前 —— Caddy 的 handle 块按书写顺序取第一个匹配的，
+	#    否则 /api/sync 会被 /api/* 抢走、跑到发音代理去。
+	@sync path /api/sync /api/board
+	handle @sync {
+		request_body {
+			max_size 2MB
+		}
+		reverse_proxy 127.0.0.1:8788
+	}
+
 	# 发音代理：转发到本机8787
 	@api path /api/*
 	handle @api {

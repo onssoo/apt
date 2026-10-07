@@ -566,6 +566,121 @@ check('iPhone 上不给「一键安装」按钮（iOS 没这个接口）',
   !/doInstall\(\)/.test(iosHtml), '页面上出现了 doInstall 按钮');
 await send('Emulation.setUserAgentOverride', { userAgent: '' });
 
+// ---------- 场景 16：多档案隔离（M10-1） ----------
+//
+// 一台设备上可以有多个档案（aptapp / aptapp:<user>），互不污染。
+// 首次给某台设备绑定授权码时，如果匿名档里已有记录会先 confirm 问一句
+// （harness 自动点「确定」，等于选择带过来）。
+
+await evaluate(`localStorage.clear()`);
+await goto(URL_);
+await evaluate(`(function(){
+  show('words');
+  addW('obrigado', '谢谢', 'Obrigado!', '', 'thank you', '');
+  save();
+})()`);
+await sleep(300);
+const anonN = await evaluate(`JSON.parse(localStorage.getItem('aptapp')||'{}').words.length`);
+check('匿名档写入的是 aptapp', anonN === 1, `${anonN} 个词`);
+
+// 绑定 ann 的授权码 → 匿名档的记录被带过来
+await gotoHash(URL_, '#u=ann-x1y2z3');
+await sleep(500);
+const annKey = await evaluate(`Object.keys(localStorage).filter(k => k.startsWith('aptapp')).sort()`);
+check('出现了独立档案键 aptapp:ann-x1y2z3', annKey.includes('aptapp:ann-x1y2z3'), JSON.stringify(annKey));
+const annN0 = await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`);
+check('匿名档的记录被带进 ann 的档案', annN0 === 1, `${annN0} 个词`);
+check('匿名档本身没有被清掉', await evaluate(`JSON.parse(localStorage.getItem('aptapp')||'{}').words.length`) === 1, '');
+
+// 在 ann 档案里再加两个词
+await evaluate(`(function(){ addW('a conta', '账单', '', '', 'bill', ''); addW('o pao', '面包', '', '', 'bread', ''); save(); })()`);
+await sleep(300);
+const annN1 = await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`);
+check('ann 档案里能继续累加', annN1 === 3, `${annN1} 个词`);
+
+// 换成 bob 的授权码 → 新档案，看不到 ann 的词
+await gotoHash(URL_, '#u=bob-a9b8c7');
+await sleep(500);
+const bobN = await evaluate(`JSON.parse(localStorage.getItem('aptapp:bob-a9b8c7')||'{}').words.length`);
+check('bob 的档案是新的（看不到 ann 的词）', bobN === 1, `${bobN} 个词 —— 1 是匿名档带过来的`);
+check('切档不影响 ann 的档案', await evaluate(`JSON.parse(localStorage.getItem('aptapp:ann-x1y2z3')||'{}').words.length`) === 3, '');
+const dN = await evaluate(`D.words.length`);
+check('界面上加载的是当前档案的数据', dN === 1, `D.words = ${dN}`);
+
+// ---------- 场景 17：端到端多设备同步（M10-2/M10-3/M10-4） ----------
+//
+// 需要 tools/dev_server.py 那种「静态站 + /api/sync 同端口」的服务器。
+// 两台设备用**同一 token**、不同本地存档来模拟：把 A 的 localStorage 快照存下来、
+// 清空当成 B、再恢复快照当成 A 回来。
+// 如果 URL_ 指向的是纯静态服务器，这一段会整体跳过。
+
+const hasApi = await evaluate(`fetch('api/sync', {method:'GET'}).then(r => r.status).catch(() => 0)`);
+if (!/:(8130|8124)\//.test(URL_) || !hasApi) {
+  check('（跳过）多设备同步需要 dev_server.py', true, 'URL_ 不是 dev_server');
+} else {
+  const TOK = 'dev-aaa111';
+  // A：造数据并上传
+  await evaluate(`localStorage.clear(); localStorage.setItem('aptuser', ${JSON.stringify(TOK)})`);
+  await goto(URL_);
+  await evaluate(`(function(){
+    addW('obrigado', '谢谢', 'Obrigado!', '', 'thank you', '');
+    addW('a conta', '账单', '', '', 'bill', '');
+    D.words[0].box = 4; D.words[0].lapse = 2; D.words[0].upd = Date.now();
+    save();
+  })()`);
+  await evaluate(`syncNow()`);
+  await sleep(400);
+  const afterA = await evaluate(`(function(){ return { n: D.words.length, sync: !!D.set.lastSync, err: D.set.lastSyncErr }; })()`);
+  check('A 设备上传成功且记下同步时间', afterA.n === 2 && afterA.sync && !afterA.err, JSON.stringify(afterA));
+  const snapA = await evaluate(`localStorage.getItem('aptapp:${TOK}')`);
+
+  // B：另一台设备，同一 token
+  await evaluate(`localStorage.clear(); localStorage.setItem('aptuser', ${JSON.stringify(TOK)})`);
+  await goto(URL_);
+  const nB0 = await evaluate(`D.words.length`);
+  check('B 设备一开始是空的（确实是新设备）', nB0 === 0, `${nB0} 个词`);
+  await evaluate(`syncNow()`);
+  await sleep(500);
+  const afterB = await evaluate(`(function(){
+    const w = D.words.find(x => x.pt === 'obrigado');
+    return { n: D.words.length, box: w && w.box, lapse: w && w.lapse };
+  })()`);
+  check('B 设备拉到了 A 的词', afterB.n === 2, `${afterB.n} 个词`);
+  check('合并后 box 与 lapse 原样保留（不归零）', afterB.box === 4 && afterB.lapse === 2, JSON.stringify(afterB));
+
+  // B 再加一个词并上传
+  await evaluate(`(function(){ addW('o pao', '面包', '', '', 'bread', ''); save(); })()`);
+  await evaluate(`syncNow()`);
+  await sleep(400);
+
+  // A 回来（恢复 A 的快照），同步后应看到 B 加的词
+  await evaluate(`localStorage.clear();
+    localStorage.setItem('aptuser', ${JSON.stringify(TOK)});
+    localStorage.setItem('aptapp:${TOK}', ${JSON.stringify(snapA)});`);
+  await goto(URL_);
+  const nA1 = await evaluate(`D.words.length`);
+  check('A 恢复快照后是原来的 2 个词', nA1 === 2, `${nA1} 个词`);
+  await evaluate(`syncNow()`);
+  await sleep(500);
+  const nA2 = await evaluate(`D.words.length`);
+  check('A 同步后拿到 B 新加的词（双向合并）', nA2 === 3, `${nA2} 个词`);
+
+  // 设置页要把同步状态显示出来
+  await evaluate(`show('stats')`);
+  await sleep(400);
+  const statsTxt = await evaluate(`document.getElementById('stats').innerText`);
+  check('设置页显示档案与上次同步', /档案/.test(statsTxt) && /上次同步/.test(statsTxt),
+    (statsTxt.match(/档案[^\n]*/) || [''])[0]);
+  check('设置页有家庭打卡板开关（默认关闭）',
+    /家庭打卡板/.test(statsTxt) && (await evaluate(`!D.set.boardOn`)), '');
+
+  // 打开打卡板 → 服务端才收录
+  await evaluate(`toggleBoard(true)`);
+  await sleep(600);
+  const boardTxt = await evaluate(`(document.getElementById('board')||{}).innerText || ''`);
+  check('打开打卡板后能看到自己的打卡状态', /已打卡|还没打卡/.test(boardTxt), boardTxt.slice(0, 60).replace(/\n/g, '|'));
+}
+
 // ---------- 汇总 ----------
 console.log('\n=== 无头 Chrome 渲染验证 ===');
 let bad = 0;

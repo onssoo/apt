@@ -762,6 +762,92 @@ t('transFromSents 只有中文时 en 为空串', () => {
   assert.equal(tr.zh, '甲。');
 });
 
+// ---------- 多设备合并（M10-3） ----------
+
+const W = (id, upd, extra) => Object.assign({ id, pt: 'p' + id, box: 0, lapse: 0, upd }, extra || {});
+
+t('mergeDocs：words 按 upd 取新', () => {
+  const m = L.mergeDocs({ words: [W('a', 100, { zh: '旧' })] }, { words: [W('a', 200, { zh: '新' })] });
+  assert.equal(m.words.length, 1);
+  assert.equal(m.words[0].zh, '新');
+});
+
+t('mergeDocs：本地较新时本地赢', () => {
+  const m = L.mergeDocs({ words: [W('a', 300, { zh: '本地' })] }, { words: [W('a', 200, { zh: '远端' })] });
+  assert.equal(m.words[0].zh, '本地');
+});
+
+t('mergeDocs：只有一边有的词都保留', () => {
+  const m = L.mergeDocs({ words: [W('a', 1)] }, { words: [W('b', 1)] });
+  assert.deepEqual(m.words.map(w => w.id).sort(), ['a', 'b']);
+});
+
+t('mergeDocs：墓碑删掉对应的词', () => {
+  const m = L.mergeDocs({ words: [W('a', 1), W('b', 1)], del: [] },
+                        { words: [W('a', 1), W('b', 1)], del: [{ id: 'a', t: 5 }] });
+  assert.deepEqual(m.words.map(w => w.id), ['b']);
+  assert.equal(m.del.length, 1);
+});
+
+t('mergeDocs：墓碑取 t 大的那条', () => {
+  const m = L.mergeDocs({ del: [{ id: 'a', t: 1 }] }, { del: [{ id: 'a', t: 9 }] });
+  assert.equal(m.del[0].t, 9);
+});
+
+t('mergeDocs：logs 计数取大不求和', () => {
+  const m = L.mergeDocs({ logs: { '2026-10-01': { newW: 3, rev: 5, done: false } } },
+                        { logs: { '2026-10-01': { newW: 2, rev: 8, done: false } } });
+  assert.equal(m.logs['2026-10-01'].newW, 3, '不能是 5');
+  assert.equal(m.logs['2026-10-01'].rev, 8, '不能是 13');
+});
+
+t('mergeDocs：logs 的 done 取或', () => {
+  const m = L.mergeDocs({ logs: { d: { done: false } } }, { logs: { d: { done: true } } });
+  assert.equal(m.logs.d.done, true);
+});
+
+t('mergeDocs：阅读记录去重后合并', () => {
+  const r = { title: '课本', min: 10, note: '' };
+  const m = L.mergeDocs({ logs: { d: { read: [r] } } }, { logs: { d: { read: [r, { title: '新闻', min: 5, note: '' }] } } });
+  assert.equal(m.logs.d.read.length, 2);
+});
+
+t('mergeDocs：lessons 取更早的读完日期', () => {
+  const m = L.mergeDocs({ lessons: { L01: '2026-10-05' } }, { lessons: { L01: '2026-10-03' } });
+  assert.equal(m.lessons.L01, '2026-10-03');
+});
+
+t('mergeDocs：set 以本地为准，schema 取大', () => {
+  const m = L.mergeDocs({ set: { goalW: 5, schema: 4 } }, { set: { goalW: 9, schema: 4 } });
+  assert.equal(m.set.goalW, 5);
+  assert.equal(m.set.schema, 4);
+});
+
+t('mergeDocs：box 与 lapse 原样保留（不归零、不重置）', () => {
+  const m = L.mergeDocs({ words: [W('a', 1, { box: 4, lapse: 2 })] }, { words: [W('b', 1, { box: 0, lapse: 7 })] });
+  const a = m.words.find(w => w.id === 'a'), b = m.words.find(w => w.id === 'b');
+  assert.equal(a.box, 4); assert.equal(a.lapse, 2);
+  assert.equal(b.box, 0); assert.equal(b.lapse, 7);
+});
+
+t('mergeDocs：seq 不小于现有数字 id', () => {
+  const m = L.mergeDocs({ words: [W(7, 1)], seq: 2 }, { words: [W(9, 1)], seq: 3 });
+  assert.ok(m.seq >= 9, `seq = ${m.seq}`);
+});
+
+t('mergeDocs：空输入不炸', () => {
+  const m = L.mergeDocs(null, null);
+  assert.deepEqual(m.words, []);
+  assert.deepEqual(m.logs, {});
+});
+
+t('mergeDocs：自己跟自己合并是幂等的', () => {
+  const d = { words: [W('a', 5, { zh: 'x' })], logs: { d: { newW: 1, read: [] } }, lessons: { L01: '2026-10-01' }, set: { goalW: 5 }, del: [], seq: 5 };
+  const once = L.mergeDocs(d, d);
+  const twice = L.mergeDocs(once, once);
+  assert.equal(JSON.stringify(once), JSON.stringify(twice));
+});
+
 // ---------- 报告（必须在文件最后） ----------
 
 console.log(`\nlogic.js 测试：${passed} 通过，${failed} 失败`);

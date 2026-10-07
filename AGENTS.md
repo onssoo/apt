@@ -74,6 +74,13 @@ node tools/test_logic.mjs
 # 跑课文流水线规则测试（validate 每条规则 + merge 行为，全程在临时沙箱里，不碰仓库内容）
 python3 tools/test_rules.py
 
+# 跑同步服务测试（真的起服务打 HTTP，含隐私要求：库里不存 token、日志不记正文）
+python3 tools/test_sync.py
+
+# 本地起「静态站 + 同步 API」同一个端口，用来跑多设备同步的端到端测试
+python3 tools/dev_server.py 8130 /tmp/apt-dev-state &
+node tools/test_render.mjs http://127.0.0.1:8130/
+
 # 跑真实渲染测试（无头 Chrome 真加载页面并断言，需要本机装有 Chrome）
 python3 -m http.server 8123 -d site &
 node tools/test_render.mjs http://127.0.0.1:8123/

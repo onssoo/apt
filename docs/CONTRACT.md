@@ -996,6 +996,35 @@ Mac mini: 编辑 materials.json
 
 ---
 
+## 19. 同步服务契约（M10）
+
+服务：`server/sync_proxy.py`（unit `apt-sync.service`，`/opt/apt-sync/`，状态目录
+`/var/lib/apt-sync/` 由 systemd StateDirectory 提供）。**只监听 127.0.0.1:8788**，
+由 Caddy 反代 `/api/sync` 与 `/api/board`。
+
+| 接口 | 认证 | 说明 |
+|---|---|---|
+| `GET /api/sync` | `Authorization: Bearer <token>` | 返回 `{doc, updatedAt}`；没存过返回 `doc: null` |
+| `PUT /api/sync` | 同上 | body `{doc, board?}`；`doc` 必须是非空对象 |
+| `GET /api/board` | 无 | 只返回**主动打开打卡板**的人：`{entries:[{name,done,streak,updatedAt}]}` |
+| `GET /healthz` | 无 | `{ok:true}` |
+
+约束：
+
+- **合并由客户端做**，服务端只是哑存储。合并规则在 `site/logic.js` 的 `mergeDocs()`
+  （words 按 `upd` 取新、`logs` 按日并集且计数取大不求和、`del` 墓碑并集、
+  `set` 本地优先）。**`box` / `lapse` 只做整条取新，任何情况下不归零、不重置。**
+- **token 只存 sha256 前 16 位**，原文不落库、不进日志 —— 日志里只有 `user=<哈希前缀>`。
+- **日志绝不记正文**（`log_request` 被覆写，只记方法/路径/状态码/字节数/用户哈希前缀）。
+- body 上限 **2 MiB**；超限回 413，且**必须先把请求体读掉再回**，否则客户端只会看到连接被重置。
+- 每 IP 每分钟 **120** 次（内存计数，重启清零），用来挡拿 token 撞库。
+- 打卡板默认**关闭**；只有本人打开后别人才读得到他的打卡状态，且只暴露
+  `name/done/streak`，不含任何学习内容。
+- Caddy 里 `@sync` 的 `handle` 块**必须排在 `@api`（`/api/*`）之前**，
+  否则 `/api/sync` 会被发音代理抢走。
+
+本地验证：`python3 tools/test_sync.py`（20 项，真起服务打 HTTP）。
+
 ## 附录 A 文件清单
 
 ### 发布物（`site/`，rsync 到 VPS，入 git）

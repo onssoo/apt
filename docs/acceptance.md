@@ -143,6 +143,20 @@ python3 tools/validate.py --audio
 | **validate 每条新规则逐条构造坏数据验证** | ✅ `python3 tools/test_rules.py` → **25 通过 0 失败**（段落对齐、ff 白名单、src.url、level、sp:"b"、句长、ex、跨课重复、废弃字段；以及 merge 的编号递增、查重拒绝、自动补/移除 ff、--dry-run、校验不过不写文件） |
 | 连续合并两篇编号正确 | ✅ L01 → L02 → L03，且**已有课文序列化后完全未变** |
 
+### M10 多用户与同步
+
+| 验收点 | 结果 |
+|---|---|
+| 多档案隔离（`aptapp` / `aptapp:<user>`） | ✅ 场景 16：匿名档写入、绑定后带过来、切档互不影响 |
+| 合并规则（`mergeDocs`） | ✅ `test_logic.mjs` 14 个用例：upd 取新、墓碑删词、logs 计数取大不求和、box/lapse 不归零、幂等 |
+| 同步服务接口 | ✅ `python3 tools/test_sync.py` **20 通过 0 失败**（真起服务打 HTTP） |
+| 隐私：库里不存 token 原文 | ✅ 直接扫 `sync.db` + `-wal` + `-shm` 三个文件的原始字节，无 token；有文档 |
+| 隐私：服务日志不记正文 | ✅ 日志里只有方法/路径/状态码/字节数/`user=<哈希前缀>` |
+| 打卡板默认关闭 | ✅ 没打开时 `/api/board` 返回空；打开后才出现，且只含 `name/done/streak` |
+| 端到端双设备双向合并 | ✅ 场景 17（`tools/dev_server.py`）：A 上传 → B 拉到 → B 再加 → A 同步后也有 |
+| 服务未部署时不吓人 | ✅ 404/501 时设置页显示「同步服务未启用」而非红色报错 |
+| VPS 部署 | ⏳ **未做**，等确认 |
+
 ## 二、真机清单（iPhone「主屏幕 App」模式，待 owner 勾选）
 
 > 做完请回填结果；不通过的项在下面写现象。这一节直接对应 review 的 M7-3。
