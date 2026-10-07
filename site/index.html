@@ -175,17 +175,28 @@ function toast(msg) {
 
 /* ---------- 发音引擎 ---------- */
 const A = new Audio();
-A.prefersReducedMotion = true;
+// 变速播放时保持音高不变（iOS 支持 preservesPitch）
+A.preservesPitch = true;
+A.mozPreservesPitch = true;
 const BL = new Map();     // src -> objectURL
 let rate = 1;
 let gen = 0;              // 播放代号，避免竞态
 const spk = t => t.replace(/…/g, ' ').replace(/\s+/g, ' ').trim();
 
-document.addEventListener('touchend', () => {
-  if (A.src) return;
+/* iOS Safari：没有用户手势触发的 play() 会被拒绝。
+   首次触摸（或点击）时用1 帧静音音频解锁；touchend 与 click 都监听，
+   因为桌面与 iOS 派发的事件不同。 */
+let unlocked = false;
+function unlock() {
+  if (unlocked) return;
+  unlocked = true;
   A.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-  A.play().catch(() => {});
-}, { once: true });
+  const p = A.play();
+  if (p && p.catch) p.catch(() => {});
+  A.pause();
+}
+document.addEventListener('touchend', unlock, { once: true });
+document.addEventListener('click', unlock, { once: true });
 
 async function load1(src) {
   if (BL.has(src)) return BL.get(src);
@@ -214,6 +225,7 @@ function speak(t, r, cb) {
  */
 async function play(src, text, cb, r) {
   const rr = r || rate;
+  unlock();               // 双保险：确保已通过用户手势解锁
   A.pause();
   try { speechSynthesis.cancel(); } catch (e) {}
   A.onended = null;
