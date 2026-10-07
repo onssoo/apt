@@ -1,0 +1,20 @@
+# apt-tts —— 发音代理。放/etc/systemd/system/apt-tts.service
+# 密钥在 /etc/apt-tts.env（600 root），由 EnvironmentFile 读取。
+[Unit]
+Description=APT TTS proxy (apt.lababa.live)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/apt-tts.env
+ExecStart=/usr/bin/python3 /opt/apt-tts/tts_proxy.py
+DynamicUser=yes
+StateDirectory=apt-tts
+Restart=always
+RestartSec=3
+# 1.9 GiB 的机器，限制内存
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target

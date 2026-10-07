@@ -1,0 +1,11 @@
+.env
+site/audio/
+site/compare/
+reports/
+tools/.qa_cache/
+*.wav
+*.mp3.tmp
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc

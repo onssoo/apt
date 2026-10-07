@@ -1,0 +1,1328 @@
+{
+ "version": 1,
+ "lessons": [
+  {
+   "id": "L01",
+   "level": "A1",
+   "min": 5,
+   "title": "Olá! Eu sou a Mei",
+   "zh": "你好！我是Mei",
+   "text": "Olá! Chamo-me Mei e tenho dezoito anos. Sou chinesa, de Zhuhai. Agora vivo em Macau, porque estudo Português na Universidade de Macau. Estou no primeiro ano.\nO Português é uma língua bonita, mas um pouco difícil. Na minha turma há vinte estudantes. A nossa professora chama-se Ana e é de Lisboa. Ela fala devagar e explica muito bem. Gosto muito das aulas!",
+   "trans": {
+    "en": "Hi! My name is Mei and I'm eighteen years old. I'm Chinese, from Zhuhai. Now I live in Macau, because I study Portuguese at the University of Macau. I'm in my first year.\nPortuguese is a beautiful language, but a little difficult. There are twenty students in my class. Our teacher is called Ana and she is from Lisbon. She speaks slowly and explains things very well. I really like the classes!",
+    "zh": "你好！我叫Mei，今年十八岁。我是中国人，来自珠海。现在我住在澳门，因为我在澳门大学学习葡萄牙语。我读一年级。\n葡萄牙语是一门很美的语言，但是有点难。我们班有二十个学生。我们的老师叫Ana，她来自里斯本。她说话很慢，讲解得非常好。我很喜欢上课！"
+   },
+   "note": "反身动词（verbos pronominais / reflexive verbs）：欧葡把代词放在动词后面，用连字符连接，如 Chamo-me Mei；巴西常说 Me chamo。表达年龄用 ter … anos（英文用 be，葡语用 ter「有」）。欧葡口语里人名前常加冠词：a Mei、a professora Ana。",
+   "words": [
+    {
+     "pt": "chamar-se",
+     "en": "to be called",
+     "zh": "叫（名字）",
+     "ex": "Chamo-me Mei."
+    },
+    {
+     "pt": "ter … anos",
+     "en": "to be … years old",
+     "zh": "……岁",
+     "ex": "Tenho dezoito anos.",
+     "ff": "≠ have … years（英文用 have，葡语用 ter「有」）"
+    },
+    {
+     "pt": "viver",
+     "en": "to live",
+     "zh": "住，生活",
+     "ex": "Agora vivo em Macau."
+    },
+    {
+     "pt": "estudar",
+     "en": "to study",
+     "zh": "学习",
+     "ex": "Estudo Português na Universidade de Macau.",
+     "ff": "≠ studious（词义不同，注意区分）"
+    },
+    {
+     "pt": "o ano",
+     "en": "year",
+     "zh": "年；年级",
+     "ex": "Estou no primeiro ano."
+    },
+    {
+     "pt": "a língua",
+     "en": "language",
+     "zh": "语言",
+     "ex": "O Português é uma língua bonita."
+    },
+    {
+     "pt": "difícil",
+     "en": "difficult",
+     "zh": "难的",
+     "ex": "É um pouco difícil.",
+     "ff": "≠ difficulty（葡语形容词 difficult，对应名词 é a dificuldade）"
+    },
+    {
+     "pt": "a turma",
+     "en": "class (group of students)",
+     "zh": "班级",
+     "ex": "Na minha turma há vinte estudantes."
+    },
+    {
+     "pt": "devagar",
+     "en": "slowly",
+     "zh": "慢慢地",
+     "ex": "Ela fala devagar."
+    },
+    {
+     "pt": "explicar",
+     "en": "to explain",
+     "zh": "解释，讲解",
+     "ex": "Ela explica muito bem."
+    },
+    {
+     "pt": "gostar de",
+     "en": "to like",
+     "zh": "喜欢",
+     "ex": "Gosto muito das aulas!",
+     "ff": "≠ to want（gostar de是「喜欢」，想要用 querer /desired）"
+    }
+   ],
+   "qs": [
+    [
+     "De onde é a Mei?",
+     "É de Zhuhai, na China."
+    ],
+    [
+     "Em que ano está a Mei?",
+     "Está no primeiro ano."
+    ],
+    [
+     "Como é a professora Ana?",
+     "É de Lisboa, fala devagar e explica muito bem."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "Olá!",
+     "p": 0,
+     "speaker": "main",
+     "en": "Hello!",
+     "zh": "你好！",
+     "a": "audio/dbfb44b9ef4cecaa.mp3"
+    },
+    {
+     "t": "Chamo-me Mei e tenho dezoito anos.",
+     "p": 0,
+     "speaker": "main",
+     "en": "My name is Mei and I'm eighteen years old.",
+     "zh": "我叫Mei，今年十八岁。",
+     "a": "audio/9e187b944ff70224.mp3"
+    },
+    {
+     "t": "Sou chinesa, de Zhuhai.",
+     "p": 0,
+     "speaker": "main",
+     "en": "I'm Chinese, from Zhuhai.",
+     "zh": "我是中国人，来自珠海。",
+     "a": "audio/a37cc8973f7fac2e.mp3"
+    },
+    {
+     "t": "Agora vivo em Macau, porque estudo Português na Universidade de Macau.",
+     "p": 0,
+     "speaker": "main",
+     "en": "Now I live in Macau, because I study Portuguese at the University of Macau.",
+     "zh": "现在我住在澳门，因为我在澳门大学学习葡萄牙语。",
+     "a": "audio/b1b57c1fa4555150.mp3"
+    },
+    {
+     "t": "Estou no primeiro ano.",
+     "p": 0,
+     "speaker": "main",
+     "en": "I'm in my first year.",
+     "zh": "我读一年级。",
+     "a": "audio/3112eac8aeacc7fa.mp3"
+    },
+    {
+     "t": "O Português é uma língua bonita, mas um pouco difícil.",
+     "p": 1,
+     "speaker": "main",
+     "en": "Portuguese is a beautiful language, but a little difficult.",
+     "zh": "葡萄牙语是一门很美的语言，但是有点难。",
+     "a": "audio/709aa60aca551880.mp3"
+    },
+    {
+     "t": "Na minha turma há vinte estudantes.",
+     "p": 1,
+     "speaker": "main",
+     "en": "There are twenty students in my class.",
+     "zh": "我们班有二十个学生。",
+     "a": "audio/c3bf09c22c70231b.mp3"
+    },
+    {
+     "t": "A nossa professora chama-se Ana e é de Lisboa.",
+     "p": 1,
+     "speaker": "main",
+     "en": "Our teacher is called Ana and she is from Lisbon.",
+     "zh": "我们的老师叫Ana，她来自里斯本。",
+     "a": "audio/619d8837e58147ae.mp3"
+    },
+    {
+     "t": "Ela fala devagar e explica muito bem.",
+     "p": 1,
+     "speaker": "main",
+     "en": "She speaks slowly and explains things very well.",
+     "zh": "她说话很慢，讲解得非常好。",
+     "a": "audio/fdbcf53478fb8a22.mp3"
+    },
+    {
+     "t": "Gosto muito das aulas!",
+     "p": 1,
+     "speaker": "main",
+     "en": "I really like the classes!",
+     "zh": "我很喜欢上课！",
+     "a": "audio/c29b7f0c66428d08.mp3"
+    }
+   ],
+   "wa": [
+    "audio/f1c0f6f5ac0ecae8.mp3",
+    "audio/ec295b09a42a7a41.mp3",
+    "audio/b760c439070f32fd.mp3",
+    "audio/87906af5b2abd66e.mp3",
+    "audio/ba1a70af9fc49d04.mp3",
+    "audio/fcc20d63bda915a4.mp3",
+    "audio/08ef8f6b2c3cc2ea.mp3",
+    "audio/d87acc78713ea207.mp3",
+    "audio/ef24ba0e8bab9040.mp3",
+    "audio/ff8e6a087e7fd718.mp3",
+    "audio/50f0f144486fad24.mp3"
+   ],
+   "en": "Hi! I'm Mei",
+   "trans_lines": [
+    {
+     "en": "Hello!",
+     "zh": "你好！"
+    },
+    {
+     "en": "My name is Mei and I'm eighteen years old.",
+     "zh": "我叫Mei，今年十八岁。"
+    },
+    {
+     "en": "I'm Chinese, from Zhuhai.",
+     "zh": "我是中国人，来自珠海。"
+    },
+    {
+     "en": "Now I live in Macau, because I study Portuguese at the University of Macau.",
+     "zh": "现在我住在澳门，因为我在澳门大学学习葡萄牙语。"
+    },
+    {
+     "en": "I'm in my first year.",
+     "zh": "我读一年级。"
+    },
+    {
+     "en": "Portuguese is a beautiful language, but a little difficult.",
+     "zh": "葡萄牙语是一门很美的语言，但是有点难。"
+    },
+    {
+     "en": "There are twenty students in my class.",
+     "zh": "我们班有二十个学生。"
+    },
+    {
+     "en": "Our teacher is called Ana and she is from Lisbon.",
+     "zh": "我们的老师叫Ana，她来自里斯本。"
+    },
+    {
+     "en": "She speaks slowly and explains things very well.",
+     "zh": "她说话很慢，讲解得非常好。"
+    },
+    {
+     "en": "I really like the classes!",
+     "zh": "我很喜欢上课！"
+    }
+   ]
+  },
+  {
+   "id": "L02",
+   "level": "A1",
+   "min": 5,
+   "title": "O campus da universidade",
+   "zh": "大学校园",
+   "text": "A Universidade de Macau fica na Ilha de Hengqin. O campus é muito grande e tem muitas árvores. Eu moro num colégio residencial com outros estudantes. O meu quarto é pequeno, mas confortável.\nPerto do colégio há uma cantina e um supermercado. A biblioteca é o meu sítio preferido: é calma e tem muitos livros em português. Às vezes vou lá estudar depois das aulas. Para ir à cidade, apanho o autocarro.",
+   "trans": "澳门大学位于横琴岛。校园很大，有很多树。我和其他学生一起住在住宿式书院里。我的房间很小，但很舒适。\n书院附近有一个食堂和一个超市。图书馆是我最喜欢的地方：那里很安静，有很多葡文书。有时候下课后我去那里学习。去市区的话，我搭公交车。",
+   "note": "ficar 除了「留下」，还常表示「位于」：A universidade fica na Ilha de Hengqin。介词和冠词要缩合：em + a = na，em + um = num，de + o = do，a + a = à。",
+   "words": [
+    [
+     "ficar",
+     "位于；留下",
+     "A universidade fica na Ilha de Hengqin."
+    ],
+    [
+     "a ilha",
+     "岛",
+     "a Ilha de Hengqin"
+    ],
+    [
+     "a árvore",
+     "树",
+     "O campus tem muitas árvores."
+    ],
+    [
+     "morar",
+     "居住",
+     "Moro num colégio residencial."
+    ],
+    [
+     "o colégio residencial",
+     "住宿式书院",
+     "Moro num colégio residencial com outros estudantes."
+    ],
+    [
+     "o quarto",
+     "房间，卧室",
+     "O meu quarto é pequeno, mas confortável."
+    ],
+    [
+     "perto de",
+     "在……附近",
+     "Perto do colégio há uma cantina."
+    ],
+    [
+     "a cantina",
+     "（学校）食堂",
+     "Almoço na cantina."
+    ],
+    [
+     "o sítio",
+     "地方（欧葡常用）",
+     "A biblioteca é o meu sítio preferido."
+    ],
+    [
+     "às vezes",
+     "有时",
+     "Às vezes vou lá estudar."
+    ],
+    [
+     "apanhar",
+     "搭乘（车）；捡起",
+     "Apanho o autocarro para ir à cidade."
+    ],
+    [
+     "o autocarro",
+     "公交车（欧葡；巴西说 ônibus）",
+     "Apanho o autocarro."
+    ]
+   ],
+   "qs": [
+    [
+     "Onde fica a Universidade de Macau?",
+     "Fica na Ilha de Hengqin."
+    ],
+    [
+     "Como é o quarto da Mei?",
+     "É pequeno, mas confortável."
+    ],
+    [
+     "Porque é que a Mei gosta da biblioteca?",
+     "Porque é calma e tem muitos livros em português."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "A Universidade de Macau fica na Ilha de Hengqin.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/ab8de5a28a489488.mp3"
+    },
+    {
+     "t": "O campus é muito grande e tem muitas árvores.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/d1604259eafc846d.mp3"
+    },
+    {
+     "t": "Eu moro num colégio residencial com outros estudantes.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/3a0578df45289d8c.mp3"
+    },
+    {
+     "t": "O meu quarto é pequeno, mas confortável.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/9d50acf33e565217.mp3"
+    },
+    {
+     "t": "Perto do colégio há uma cantina e um supermercado.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/65a93ee56d3cf85d.mp3"
+    },
+    {
+     "t": "A biblioteca é o meu sítio preferido: é calma e tem muitos livros em português.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/7416bd6968174355.mp3"
+    },
+    {
+     "t": "Às vezes vou lá estudar depois das aulas.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/609fff5122cea174.mp3"
+    },
+    {
+     "t": "Para ir à cidade, apanho o autocarro.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/74071f6857266143.mp3"
+    }
+   ],
+   "wa": [
+    "audio/26527694cac4011d.mp3",
+    "audio/0ddbfddf2b06f486.mp3",
+    "audio/2cfac5d74817ed3b.mp3",
+    "audio/90018b5c347860f8.mp3",
+    "audio/680ba51c09548a76.mp3",
+    "audio/425038eb732fe9ce.mp3",
+    "audio/97bbef0453b209b0.mp3",
+    "audio/3cf0a48fad6c67ba.mp3",
+    "audio/62693351dc8cce91.mp3",
+    "audio/0c967330a141fe82.mp3",
+    "audio/48d469cb44f574f4.mp3",
+    "audio/8b9013b73dcb0865.mp3"
+   ]
+  },
+  {
+   "id": "L03",
+   "level": "A1",
+   "min": 5,
+   "title": "Um dia normal",
+   "zh": "平常的一天",
+   "text": "Durante a semana, acordo às sete horas. Primeiro, tomo duche e visto-me. Depois, tomo o pequeno-almoço na cantina: normalmente como pão e bebo um café com leite. As aulas começam às nove.\nAo meio-dia almoço com as minhas colegas. À tarde, faço os trabalhos de casa na biblioteca. Janto por volta das sete e, à noite, vejo uma série portuguesa para praticar. Deito-me às onze e meia.",
+   "trans": "平日里，我七点起床。首先洗澡、穿衣服。然后在食堂吃早餐：通常吃面包，喝一杯牛奶咖啡。九点开始上课。\n中午我和同学们一起吃午饭。下午我在图书馆做作业。七点左右吃晚饭，晚上看一部葡萄牙剧集来练习。我十一点半上床睡觉。",
+   "note": "反身动词：vestir-se → visto-me，deitar-se → deito-me。时间表达：às sete（在七点），ao meio-dia（在中午），às onze e meia（十一点半）。早餐欧葡叫 pequeno-almoço，巴西叫 café da manhã。",
+   "words": [
+    [
+     "acordar",
+     "醒来",
+     "Acordo às sete horas."
+    ],
+    [
+     "tomar duche",
+     "洗澡（欧葡；巴西说 tomar banho）",
+     "Primeiro, tomo duche."
+    ],
+    [
+     "vestir-se",
+     "穿衣服",
+     "Tomo duche e visto-me."
+    ],
+    [
+     "o pequeno-almoço",
+     "早餐（欧葡；巴西说 café da manhã）",
+     "Tomo o pequeno-almoço na cantina."
+    ],
+    [
+     "normalmente",
+     "通常",
+     "Normalmente como pão."
+    ],
+    [
+     "começar",
+     "开始",
+     "As aulas começam às nove."
+    ],
+    [
+     "almoçar",
+     "吃午饭",
+     "Ao meio-dia almoço com as minhas colegas."
+    ],
+    [
+     "os trabalhos de casa",
+     "家庭作业",
+     "Faço os trabalhos de casa na biblioteca."
+    ],
+    [
+     "jantar",
+     "吃晚饭；晚饭",
+     "Janto por volta das sete."
+    ],
+    [
+     "por volta de",
+     "大约（时间）",
+     "por volta das sete"
+    ],
+    [
+     "deitar-se",
+     "上床睡觉",
+     "Deito-me às onze e meia."
+    ],
+    [
+     "praticar",
+     "练习",
+     "Vejo uma série para praticar."
+    ]
+   ],
+   "qs": [
+    [
+     "A que horas acorda a Mei?",
+     "Acorda às sete horas."
+    ],
+    [
+     "O que come ao pequeno-almoço?",
+     "Normalmente come pão e bebe um café com leite."
+    ],
+    [
+     "O que faz à noite?",
+     "Vê uma série portuguesa para praticar."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "Durante a semana, acordo às sete horas.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/8612283e0139b6b1.mp3"
+    },
+    {
+     "t": "Primeiro, tomo duche e visto-me.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/c645cd57481a8160.mp3"
+    },
+    {
+     "t": "Depois, tomo o pequeno-almoço na cantina: normalmente como pão e bebo um café com leite.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/255edd463df7a4f7.mp3"
+    },
+    {
+     "t": "As aulas começam às nove.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/e6b1eed58a089963.mp3"
+    },
+    {
+     "t": "Ao meio-dia almoço com as minhas colegas.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/5baaccd9918e7981.mp3"
+    },
+    {
+     "t": "À tarde, faço os trabalhos de casa na biblioteca.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/e6b4e11f1a6ee0f6.mp3"
+    },
+    {
+     "t": "Janto por volta das sete e, à noite, vejo uma série portuguesa para praticar.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/d5100a86be4fb956.mp3"
+    },
+    {
+     "t": "Deito-me às onze e meia.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/6c52e6a1442a5b5e.mp3"
+    }
+   ],
+   "wa": [
+    "audio/136d08aa379c61a4.mp3",
+    "audio/31c0c448e8cc48af.mp3",
+    "audio/eaeae909be093320.mp3",
+    "audio/9350408574631b26.mp3",
+    "audio/ed092ed63b299b3d.mp3",
+    "audio/0b956faa42b918cf.mp3",
+    "audio/e7c3634cbb53a4d1.mp3",
+    "audio/f3cfb9b569c3e37e.mp3",
+    "audio/106f62decece3f42.mp3",
+    "audio/c83b22a261a4a60d.mp3",
+    "audio/dee54ee94ab5cec4.mp3",
+    "audio/eeea5cffdd7ad15e.mp3"
+   ]
+  },
+  {
+   "id": "L04",
+   "level": "A2",
+   "min": 8,
+   "title": "A comida de Macau",
+   "zh": "澳门的美食",
+   "text": "Macau é famosa pela sua gastronomia. Aqui podemos provar comida chinesa, portuguesa e macaense. A cozinha macaense mistura sabores de Portugal, da China, da Índia e de outros países. O minchi, por exemplo, é um prato de carne picada com batata.\nEu adoro o pastel de nata: é um doce de massa folhada com creme de ovo. Os melhores comem-se quentes, com canela por cima. Ao fim de semana, vou muitas vezes a um restaurante português com amigos e pedimos bacalhau. Os portugueses dizem que há mil maneiras de cozinhar bacalhau!",
+   "trans": "澳门以美食闻名。在这里我们可以品尝中国菜、葡国菜和土生葡人菜。土生菜融合了葡萄牙、中国、印度和其他国家的味道。比如「免治」（minchi）就是一道用肉末和土豆做的菜。\n我特别喜欢葡式蛋挞：它是一种酥皮包着蛋奶馅的甜点。最好吃的要趁热吃，上面撒上肉桂粉。周末我常常和朋友去一家葡国餐厅，我们会点鳕鱼。葡萄牙人说，鳕鱼有一千种做法！",
+   "note": "gostar 后面必须加 de（Gosto de café），adorar 直接加宾语（Adoro o pastel de nata）。comem-se 是「被动 se」：Os melhores comem-se quentes，意思是「最好的要趁热吃」。",
+   "words": [
+    [
+     "a gastronomia",
+     "美食，饮食文化",
+     "Macau é famosa pela sua gastronomia."
+    ],
+    [
+     "provar",
+     "品尝；试",
+     "Aqui podemos provar comida macaense."
+    ],
+    [
+     "macaense",
+     "澳门土生葡人的",
+     "a cozinha macaense"
+    ],
+    [
+     "misturar",
+     "混合",
+     "A cozinha macaense mistura sabores."
+    ],
+    [
+     "o sabor",
+     "味道",
+     "sabores de Portugal e da China"
+    ],
+    [
+     "o prato",
+     "菜肴；盘子",
+     "O minchi é um prato de carne picada."
+    ],
+    [
+     "a carne picada",
+     "肉末",
+     "carne picada com batata"
+    ],
+    [
+     "o pastel de nata",
+     "葡式蛋挞",
+     "Adoro o pastel de nata."
+    ],
+    [
+     "a canela",
+     "肉桂",
+     "com canela por cima"
+    ],
+    [
+     "pedir",
+     "点（菜）；请求",
+     "Pedimos bacalhau."
+    ],
+    [
+     "o bacalhau",
+     "（咸）鳕鱼",
+     "Há mil maneiras de cozinhar bacalhau."
+    ],
+    [
+     "a maneira",
+     "方式，方法",
+     "mil maneiras de cozinhar"
+    ]
+   ],
+   "qs": [
+    [
+     "Que países influenciam a cozinha macaense?",
+     "Portugal, a China, a Índia e outros países."
+    ],
+    [
+     "O que é o minchi?",
+     "É um prato de carne picada com batata."
+    ],
+    [
+     "Como se come o pastel de nata?",
+     "Quente, com canela por cima."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "Macau é famosa pela sua gastronomia.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/7a03e47cfe673b5b.mp3"
+    },
+    {
+     "t": "Aqui podemos provar comida chinesa, portuguesa e macaense.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/cca17a3264e011ce.mp3"
+    },
+    {
+     "t": "A cozinha macaense mistura sabores de Portugal, da China, da Índia e de outros países.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/d87cf0f38891177a.mp3"
+    },
+    {
+     "t": "O minchi, por exemplo, é um prato de carne picada com batata.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/2dcb1bfd5cb4a4ab.mp3"
+    },
+    {
+     "t": "Eu adoro o pastel de nata: é um doce de massa folhada com creme de ovo.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/0b53ad4528ccebb4.mp3"
+    },
+    {
+     "t": "Os melhores comem-se quentes, com canela por cima.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/2f777e5ba30d2585.mp3"
+    },
+    {
+     "t": "Ao fim de semana, vou muitas vezes a um restaurante português com amigos e pedimos bacalhau.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/07fbaefca9a525b0.mp3"
+    },
+    {
+     "t": "Os portugueses dizem que há mil maneiras de cozinhar bacalhau!",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/82339948c01f3222.mp3"
+    }
+   ],
+   "wa": [
+    "audio/d599b8fd10ca720d.mp3",
+    "audio/3123befc617e9ab9.mp3",
+    "audio/86bf1c65cc0c18b4.mp3",
+    "audio/8d3718079d7169a1.mp3",
+    "audio/a89681e9ace5c3c5.mp3",
+    "audio/6573ad9274d04e1f.mp3",
+    "audio/b45925b31bc8f68d.mp3",
+    "audio/073d963bc23a8128.mp3",
+    "audio/58b4e1f420e577a6.mp3",
+    "audio/dc7eaaf613e3ae26.mp3",
+    "audio/8b6a83663c15737c.mp3",
+    "audio/6d4a6ccd45d69aaa.mp3"
+   ]
+  },
+  {
+   "id": "L05",
+   "level": "A2",
+   "min": 8,
+   "title": "Um passeio pelo centro",
+   "zh": "市中心一日游",
+   "text": "No sábado passado, fui ao centro de Macau com a minha colega Lúcia. Apanhámos o autocarro e saímos no Largo do Senado. A praça estava cheia de turistas. O chão tem a famosa calçada portuguesa, com ondas pretas e brancas.\nDepois, subimos a pé até às Ruínas de São Paulo e tirámos muitas fotografias. Estava muito calor, por isso comprámos dois sumos de manga. No fim, entrámos numa livraria e eu comprei um livro de contos em português. Foi um dia ótimo!",
+   "trans": "上周六，我和同学Lúcia去了澳门市中心。我们搭公交车，在议事亭前地下车。广场上挤满了游客。地面铺着著名的葡式碎石路，是黑白相间的波浪图案。\n然后我们步行走上大三巴牌坊，拍了很多照片。天气很热，所以我们买了两杯芒果汁。最后我们走进一家书店，我买了一本葡文短篇小说集。这一天棒极了！",
+   "note": "完成过去时（pretérito perfeito）里，-ar 动词的 nós 形式在欧葡要加重音：apanhámos、comprámos，用来和现在时 apanhamos 区分（巴西不加）。ir 和 ser 的过去时同形：fui 既是「我去了」也是「我曾是」。注意假朋友：livraria 是书店，biblioteca 是图书馆。",
+   "words": [
+    [
+     "passado",
+     "上一个的；过去的",
+     "No sábado passado fui ao centro."
+    ],
+    [
+     "fui",
+     "我去了（ir）／我曾是（ser）",
+     "Fui ao centro de Macau."
+    ],
+    [
+     "o largo",
+     "（小）广场",
+     "o Largo do Senado"
+    ],
+    [
+     "cheio de",
+     "充满……的",
+     "A praça estava cheia de turistas."
+    ],
+    [
+     "o chão",
+     "地面",
+     "O chão tem calçada portuguesa."
+    ],
+    [
+     "a calçada portuguesa",
+     "葡式碎石路",
+     "a famosa calçada portuguesa"
+    ],
+    [
+     "subir",
+     "上去，登上",
+     "Subimos até às Ruínas de São Paulo."
+    ],
+    [
+     "a pé",
+     "步行",
+     "Subimos a pé."
+    ],
+    [
+     "tirar fotografias",
+     "拍照",
+     "Tirámos muitas fotografias."
+    ],
+    [
+     "o sumo",
+     "果汁（欧葡；巴西说 suco）",
+     "Comprámos dois sumos de manga."
+    ],
+    [
+     "a livraria",
+     "书店（不是图书馆！）",
+     "Entrámos numa livraria."
+    ],
+    [
+     "o conto",
+     "短篇故事",
+     "um livro de contos"
+    ]
+   ],
+   "qs": [
+    [
+     "Com quem foi a Mei ao centro?",
+     "Foi com a colega Lúcia."
+    ],
+    [
+     "O que fizeram nas Ruínas de São Paulo?",
+     "Tiraram muitas fotografias."
+    ],
+    [
+     "O que comprou a Mei na livraria?",
+     "Comprou um livro de contos em português."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "No sábado passado, fui ao centro de Macau com a minha colega Lúcia.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/4bbd678ab38c2cbe.mp3"
+    },
+    {
+     "t": "Apanhámos o autocarro e saímos no Largo do Senado.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/b8ab07f9f51e6ed2.mp3"
+    },
+    {
+     "t": "A praça estava cheia de turistas.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/59f604a1caf3ced2.mp3"
+    },
+    {
+     "t": "O chão tem a famosa calçada portuguesa, com ondas pretas e brancas.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/1581da13084a6ce0.mp3"
+    },
+    {
+     "t": "Depois, subimos a pé até às Ruínas de São Paulo e tirámos muitas fotografias.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/1cfbcd738334bdc2.mp3"
+    },
+    {
+     "t": "Estava muito calor, por isso comprámos dois sumos de manga.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/2c9429fa665cd358.mp3"
+    },
+    {
+     "t": "No fim, entrámos numa livraria e eu comprei um livro de contos em português.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/36354ce42729fc86.mp3"
+    },
+    {
+     "t": "Foi um dia ótimo!",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/d007c6f63dcdbca8.mp3"
+    }
+   ],
+   "wa": [
+    "audio/d02f0bc780eb90c4.mp3",
+    "audio/3fb425f7ab5804a8.mp3",
+    "audio/bd4c3c9a48ce2e23.mp3",
+    "audio/6ba74b378787020b.mp3",
+    "audio/df7bb803a0e0df8a.mp3",
+    "audio/465580bdc54a8a9b.mp3",
+    "audio/130221d75695ac8b.mp3",
+    "audio/dda2c952dd661c25.mp3",
+    "audio/36eccdfea07f0ee6.mp3",
+    "audio/44be768fd07cd8de.mp3",
+    "audio/c401ce6b237fb291.mp3",
+    "audio/c96103e607cf7ba5.mp3"
+   ]
+  },
+  {
+   "id": "L06",
+   "level": "A2",
+   "min": 8,
+   "title": "O tempo em Macau",
+   "zh": "澳门的天气",
+   "text": "Em Macau, o verão é longo, quente e muito húmido. Entre maio e setembro chove muito e às vezes há tufões. Quando há sinal de tufão número oito ou superior, as aulas são canceladas e todos ficam em casa.\nO outono é a minha estação preferida: o céu está limpo e a temperatura é agradável. No inverno não neva, mas pode estar frio e com vento, sobretudo em janeiro. A primavera é curta e há muito nevoeiro. E na tua terra, como é o tempo?",
+   "trans": "澳门的夏天漫长、炎热，又非常潮湿。五月到九月雨水很多，有时会有台风。挂起八号或以上台风信号时，学校停课，大家都待在家里。\n秋天是我最喜欢的季节：天空晴朗，气温宜人。冬天不下雪，但可能又冷又有风，尤其是在一月。春天很短，常常有雾。那你的家乡天气怎么样？",
+   "note": "天气表达：Está calor / frio（很热／很冷）用 estar；Há vento / nevoeiro（有风／有雾）用 haver；chover（下雨）、nevar（下雪）是无人称动词：Chove muito。按新正字法，欧葡的月份和季节都小写：maio、setembro、o verão。",
+   "words": [
+    [
+     "o verão",
+     "夏天",
+     "O verão é longo e quente."
+    ],
+    [
+     "húmido",
+     "潮湿的（巴西拼作 úmido）",
+     "O verão é muito húmido."
+    ],
+    [
+     "chover",
+     "下雨",
+     "Entre maio e setembro chove muito."
+    ],
+    [
+     "o tufão",
+     "台风",
+     "Às vezes há tufões."
+    ],
+    [
+     "o sinal",
+     "信号；标志",
+     "sinal de tufão número oito"
+    ],
+    [
+     "cancelar",
+     "取消",
+     "As aulas são canceladas."
+    ],
+    [
+     "a estação",
+     "季节；车站",
+     "O outono é a minha estação preferida."
+    ],
+    [
+     "o céu",
+     "天空",
+     "O céu está limpo."
+    ],
+    [
+     "agradável",
+     "宜人的，令人愉快的",
+     "A temperatura é agradável."
+    ],
+    [
+     "nevar",
+     "下雪",
+     "No inverno não neva."
+    ],
+    [
+     "sobretudo",
+     "尤其，特别是",
+     "sobretudo em janeiro"
+    ],
+    [
+     "o nevoeiro",
+     "雾",
+     "Há muito nevoeiro."
+    ]
+   ],
+   "qs": [
+    [
+     "Como é o verão em Macau?",
+     "É longo, quente e muito húmido."
+    ],
+    [
+     "O que acontece quando há sinal de tufão número oito?",
+     "As aulas são canceladas e todos ficam em casa."
+    ],
+    [
+     "Qual é a estação preferida da Mei? Porquê?",
+     "É o outono, porque o céu está limpo e a temperatura é agradável."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "Em Macau, o verão é longo, quente e muito húmido.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/6e651ce5fc5b43e3.mp3"
+    },
+    {
+     "t": "Entre maio e setembro chove muito e às vezes há tufões.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/e34c912ee5710239.mp3"
+    },
+    {
+     "t": "Quando há sinal de tufão número oito ou superior, as aulas são canceladas e todos ficam em casa.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/1e583a93225f08ff.mp3"
+    },
+    {
+     "t": "O outono é a minha estação preferida: o céu está limpo e a temperatura é agradável.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/69ff3e0fa205afdf.mp3"
+    },
+    {
+     "t": "No inverno não neva, mas pode estar frio e com vento, sobretudo em janeiro.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/350a8696578661be.mp3"
+    },
+    {
+     "t": "A primavera é curta e há muito nevoeiro.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/9cad745c4bf96570.mp3"
+    },
+    {
+     "t": "E na tua terra, como é o tempo?",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/fad09de5c2f4aef1.mp3"
+    }
+   ],
+   "wa": [
+    "audio/5bb3b145cf781e81.mp3",
+    "audio/2534e0fd5f94f032.mp3",
+    "audio/f98f318c6be0f14c.mp3",
+    "audio/cec3207dbb3baf4a.mp3",
+    "audio/29cb76d5f491bbc9.mp3",
+    "audio/7995dfeb0c5e4f51.mp3",
+    "audio/ea54c814243640e8.mp3",
+    "audio/17fcbf14960e7fd6.mp3",
+    "audio/b18aef8bb9874c87.mp3",
+    "audio/b8408febb71b5da0.mp3",
+    "audio/32aa5f7f9fe9d761.mp3",
+    "audio/2c7f506e88305eea.mp3"
+   ]
+  },
+  {
+   "id": "L07",
+   "level": "A2",
+   "min": 6,
+   "title": "No Mercado Vermelho",
+   "zh": "在红街市（对话）",
+   "text": "A Mei vai ao Mercado Vermelho comprar fruta.\n— Bom dia! Queria um quilo de laranjas, se faz favor.\n— Com certeza. Mais alguma coisa?\n— Sim. Quanto custam estas mangas?\n— Trinta patacas o quilo. Estão muito doces!\n— Então dê-me meio quilo, por favor.\n— Aqui tem. São trinta e cinco patacas ao todo.\n— Posso pagar com o telemóvel?\n— Pode, claro.\n— Obrigada. Bom dia!",
+   "trans": "Mei去红街市买水果。\n——早上好！我想要一公斤橙子，麻烦您。\n——没问题。还要别的吗？\n——要。这些芒果多少钱？\n——三十澳门元一公斤。很甜的！\n——那请给我半公斤。\n——给您。一共三十五澳门元。\n——我可以用手机付款吗？\n——当然可以。\n——谢谢，祝您愉快！",
+   "note": "礼貌请求用未完成过去时 Queria…（我想要…），比 Quero 客气。欧葡常说 se faz favor。对陌生人用第三人称动词形式（Pode、dê-me）表示「您」。欧葡里直接说 você 有时显得不够礼貌，所以常省略主语。女生说 Obrigada，男生说 Obrigado。",
+   "words": [
+    [
+     "queria",
+     "我想要（礼貌说法）",
+     "Queria um quilo de laranjas."
+    ],
+    [
+     "se faz favor",
+     "请，劳驾（欧葡）",
+     "Um café, se faz favor."
+    ],
+    [
+     "com certeza",
+     "当然，没问题",
+     "— Com certeza."
+    ],
+    [
+     "mais alguma coisa?",
+     "还要别的吗？",
+     "Mais alguma coisa?"
+    ],
+    [
+     "quanto custa?",
+     "多少钱？（复数 custam）",
+     "Quanto custam estas mangas?"
+    ],
+    [
+     "a pataca",
+     "澳门元",
+     "Trinta patacas o quilo."
+    ],
+    [
+     "doce",
+     "甜的；甜点",
+     "Estão muito doces!"
+    ],
+    [
+     "dê-me",
+     "请给我",
+     "Dê-me meio quilo."
+    ],
+    [
+     "meio",
+     "一半的",
+     "meio quilo"
+    ],
+    [
+     "ao todo",
+     "总共",
+     "São trinta e cinco patacas ao todo."
+    ],
+    [
+     "pagar",
+     "付钱",
+     "Posso pagar com o telemóvel?"
+    ],
+    [
+     "o telemóvel",
+     "手机（欧葡；巴西说 celular）",
+     "Posso pagar com o telemóvel?"
+    ]
+   ],
+   "qs": [
+    [
+     "O que quer a Mei comprar primeiro?",
+     "Um quilo de laranjas."
+    ],
+    [
+     "Quanto custa o quilo de mangas?",
+     "Trinta patacas."
+    ],
+    [
+     "Como paga a Mei?",
+     "Com o telemóvel."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "A Mei vai ao Mercado Vermelho comprar fruta.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/bca0177b8c56d78f.mp3"
+    },
+    {
+     "t": "— Bom dia!",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/59a639188c7e39e3.mp3"
+    },
+    {
+     "t": "Queria um quilo de laranjas, se faz favor.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/b69bf4bcdf509f15.mp3"
+    },
+    {
+     "t": "— Com certeza.",
+     "p": 2,
+     "speaker": "second",
+     "a": "audio/fd212fcab09f88cc.mp3"
+    },
+    {
+     "t": "Mais alguma coisa?",
+     "p": 2,
+     "speaker": "second",
+     "a": "audio/b26ffde01dbf80b0.mp3"
+    },
+    {
+     "t": "— Sim.",
+     "p": 3,
+     "speaker": "main",
+     "a": "audio/7a5b632a7c6e70c1.mp3"
+    },
+    {
+     "t": "Quanto custam estas mangas?",
+     "p": 3,
+     "speaker": "main",
+     "a": "audio/840c202cc23673cb.mp3"
+    },
+    {
+     "t": "— Trinta patacas o quilo.",
+     "p": 4,
+     "speaker": "second",
+     "a": "audio/fad0701b1f013dc2.mp3"
+    },
+    {
+     "t": "Estão muito doces!",
+     "p": 4,
+     "speaker": "second",
+     "a": "audio/8bf692393ce287e3.mp3"
+    },
+    {
+     "t": "— Então dê-me meio quilo, por favor.",
+     "p": 5,
+     "speaker": "main",
+     "a": "audio/de8dd0d110ff3ee2.mp3"
+    },
+    {
+     "t": "— Aqui tem.",
+     "p": 6,
+     "speaker": "second",
+     "a": "audio/459ab54cfb8aaf0f.mp3"
+    },
+    {
+     "t": "São trinta e cinco patacas ao todo.",
+     "p": 6,
+     "speaker": "second",
+     "a": "audio/a873c31003d84c89.mp3"
+    },
+    {
+     "t": "— Posso pagar com o telemóvel?",
+     "p": 7,
+     "speaker": "main",
+     "a": "audio/4df88302541edc57.mp3"
+    },
+    {
+     "t": "— Pode, claro.",
+     "p": 8,
+     "speaker": "second",
+     "a": "audio/d2fd76653bfea9ac.mp3"
+    },
+    {
+     "t": "— Obrigada.",
+     "p": 9,
+     "speaker": "main",
+     "a": "audio/85244fafb7c95757.mp3"
+    },
+    {
+     "t": "Bom dia!",
+     "p": 9,
+     "speaker": "main",
+     "a": "audio/59a639188c7e39e3.mp3"
+    }
+   ],
+   "wa": [
+    "audio/9e2e9714ff1b8a6d.mp3",
+    "audio/d7c5d16df2cf77f9.mp3",
+    "audio/20693f978137b3b4.mp3",
+    "audio/0baf77d2f62d722d.mp3",
+    "audio/d2e63689200f7c64.mp3",
+    "audio/e3e54c5bdf940d93.mp3",
+    "audio/8744879c0abc15c5.mp3",
+    "audio/0c0a31ee849ab642.mp3",
+    "audio/a38c6dcd18397bca.mp3",
+    "audio/fbb4bbce0a05a309.mp3",
+    "audio/a35ceeaf2c259fc2.mp3",
+    "audio/43fdc82e1880df0a.mp3"
+   ]
+  },
+  {
+   "id": "L08",
+   "level": "A2",
+   "min": 8,
+   "title": "Planos para o futuro",
+   "zh": "未来的计划",
+   "text": "No próximo ano, quero participar num programa de intercâmbio em Portugal. Muitos estudantes do meu curso vão estudar um semestre em Lisboa, em Coimbra ou no Porto. Eu prefiro Coimbra, porque tem uma das universidades mais antigas da Europa.\nLá vou viver com uma família portuguesa e falar português todos os dias. Também vou viajar de comboio pelo país. Para me preparar, leio um pouco todos os dias e aprendo palavras novas. Um dia, gostava de trabalhar como tradutora entre o chinês e o português.",
+   "trans": "明年我想参加去葡萄牙的交换项目。我们专业有很多学生会去里斯本、科英布拉或波尔图学习一个学期。我更喜欢科英布拉，因为那里有欧洲最古老的大学之一。\n我会在那里和一个葡萄牙家庭一起住，每天说葡萄牙语。我还要坐火车在全国各地旅行。为了做准备，我每天读一点东西，学一些新单词。将来有一天，我希望成为一名中葡翻译。",
+   "note": "近将来时用 ir + 不定式：vou viver、vão estudar。欧葡口语里常用未完成过去时表达愿望：Gostava de trabalhar…（我希望……），巴西更常说 Gostaria de。城市名的冠词：o Porto 要加冠词（no Porto），Lisboa 和 Coimbra 不加（em Lisboa）。",
+   "words": [
+    [
+     "próximo",
+     "下一个的；附近的",
+     "No próximo ano quero ir a Portugal."
+    ],
+    [
+     "participar em",
+     "参加",
+     "participar num programa de intercâmbio"
+    ],
+    [
+     "o intercâmbio",
+     "交流，交换（学习）",
+     "um programa de intercâmbio"
+    ],
+    [
+     "o curso",
+     "（大学）专业；课程",
+     "os estudantes do meu curso"
+    ],
+    [
+     "o semestre",
+     "学期",
+     "estudar um semestre em Lisboa"
+    ],
+    [
+     "preferir",
+     "更喜欢",
+     "Eu prefiro Coimbra."
+    ],
+    [
+     "antigo",
+     "古老的；以前的",
+     "uma das universidades mais antigas da Europa"
+    ],
+    [
+     "viajar",
+     "旅行",
+     "Vou viajar pelo país."
+    ],
+    [
+     "o comboio",
+     "火车（欧葡；巴西说 trem）",
+     "Vou viajar de comboio."
+    ],
+    [
+     "a palavra",
+     "单词，词",
+     "Aprendo palavras novas."
+    ],
+    [
+     "gostava de",
+     "我希望……（欧葡口语）",
+     "Gostava de trabalhar como tradutora."
+    ],
+    [
+     "a tradutora",
+     "（女）翻译",
+     "Quero ser tradutora."
+    ]
+   ],
+   "qs": [
+    [
+     "Para onde quer a Mei ir no próximo ano?",
+     "Para Portugal, num programa de intercâmbio."
+    ],
+    [
+     "Porque prefere Coimbra?",
+     "Porque tem uma das universidades mais antigas da Europa."
+    ],
+    [
+     "O que gostava a Mei de fazer no futuro?",
+     "Gostava de trabalhar como tradutora entre o chinês e o português."
+    ]
+   ],
+   "sents": [
+    {
+     "t": "No próximo ano, quero participar num programa de intercâmbio em Portugal.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/8a45139f377ba1cb.mp3"
+    },
+    {
+     "t": "Muitos estudantes do meu curso vão estudar um semestre em Lisboa, em Coimbra ou no Porto.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/551336ba59293cd6.mp3"
+    },
+    {
+     "t": "Eu prefiro Coimbra, porque tem uma das universidades mais antigas da Europa.",
+     "p": 0,
+     "speaker": "main",
+     "a": "audio/91558945aefdedcd.mp3"
+    },
+    {
+     "t": "Lá vou viver com uma família portuguesa e falar português todos os dias.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/324b6007c8af92b7.mp3"
+    },
+    {
+     "t": "Também vou viajar de comboio pelo país.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/e76eeb1a85f79b58.mp3"
+    },
+    {
+     "t": "Para me preparar, leio um pouco todos os dias e aprendo palavras novas.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/3b6fe023dfa52a41.mp3"
+    },
+    {
+     "t": "Um dia, gostava de trabalhar como tradutora entre o chinês e o português.",
+     "p": 1,
+     "speaker": "main",
+     "a": "audio/0bbd0ff0e826c335.mp3"
+    }
+   ],
+   "wa": [
+    "audio/80888174a931cebc.mp3",
+    "audio/3e9797d0e38ce559.mp3",
+    "audio/1f8ff6401780960c.mp3",
+    "audio/18a6deccd9221d07.mp3",
+    "audio/131d6cb792598754.mp3",
+    "audio/f734d57d2e509595.mp3",
+    "audio/29bf78e7403d8f12.mp3",
+    "audio/492c1b3fc4f53e09.mp3",
+    "audio/7af108f97444567d.mp3",
+    "audio/dedfcf0a7f71dbfa.mp3",
+    "audio/88d9c1b173c71f61.mp3",
+    "audio/f5f5577eb17b3d43.mp3"
+   ]
+  }
+ ]
+}

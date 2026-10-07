@@ -1,0 +1,15 @@
+{
+  "name": "APT",
+  "short_name": "APT",
+  "description": "葡语学习打卡（Ann 的葡萄牙语训练）",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7f9",
+  "theme_color": "#00843D",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

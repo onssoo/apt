@@ -1,0 +1,51 @@
+# APT —— 葡语学习打卡 PWA
+#
+# 用法（docs/CONTRACT.md 16.1 第 9 步）：
+#   1. 备份：sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$(date +%Y%m%d)
+#   2. 把下面整块**追加**到 /etc/caddy/Caddyfile 末尾
+#      ⚠️ 不要动已有的 lababa 站点块，它也在同一个文件里
+#   3. 校验：sudo caddy validate --config /etc/caddy/Caddyfile
+#   4. 重载：sudo systemctl reload caddy
+#
+# 说明：
+# - Caddy 自动签发与续期证书，不需要 ssl_certificate，不需要 certbot
+# - lababa.live 已配泛解析 *，apt.lababa.live 自动解析到本机，无需 A 记录
+# - Caddy 无内建限流，日额度由 apt-tts 自身兜底（见 CONTRACT 9.2）
+
+apt.lababa.live {
+	encode zstd gzip
+
+	root * /var/www/apt
+	file_server
+
+	# Service Worker 绝不能进缓存：命中缓存 = 更新最长一天拿不到
+	@sw path /sw.js
+	header @sw Cache-Control "no-cache, no-store, must-revalidate"
+
+	# 页面与数据：每次回源，保证新课文自动出现
+	@data path / /index.html /logic.js /materials.json /manifest.json
+	header @data Cache-Control "no-cache"
+
+	# 音频内容不可变，长缓存
+	@audio path /audio/*
+	header @audio Cache-Control "public, max-age=31536000, immutable"
+
+	# 发音代理：转发到 127.0.0.1:8787
+	@api path /api/*
+	handle @api {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8787
+	}
+
+	# ⚠️ 必须关闭该路径的访问日志：查询串就是学生输入的学习内容
+	log_skip /api/*
+
+	log {
+		output file /var/log/caddy/apt.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}

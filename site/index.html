@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="APT">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>APT</title>
+<style>
+:root{
+  --c:#00843D; --bg:#f6f7f9; --card:#fff; --t:#222; --mu:#888;
+  --warn:#e98a00; --bad:#d33; --ffbg:#fff4e0; --ffb:#e98a00;
+  --ok:#00843D;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#111;--card:#1c1c1e;--t:#eee;--mu:#999;--ffbg:#3a2c10;--ok:#5DCAA5}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);color:var(--t);
+ padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom))}
+main{max-width:640px;margin:auto;padding:16px}
+.card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px}
+h2{margin:4px 0 12px;font-size:20px}
+input,textarea,select{width:100%;font-size:16px;padding:11px;border:1px solid #8885;border-radius:10px;
+ margin:4px 0 10px;background:var(--card);color:var(--t)}
+button,.btn{font-size:16px;padding:11px 16px;border:0;border-radius:10px;background:var(--c);color:#fff;
+ display:inline-block;min-height:44px}
+.btn{cursor:pointer}
+.g{background:#8882;color:var(--t)}
+.sm{font-size:15px;padding:8px 14px;min-height:44px}
+.lg{font-size:17px;padding:13px 20px;width:100%}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);
+ border-top:1px solid #8883;padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav button{flex:1;background:none;color:var(--mu);border-radius:0;padding:14px 0;min-height:44px;font-size:15px}
+nav button.on{color:var(--c);font-weight:600}
+.big{font-size:40px;font-weight:700;color:var(--c)}
+.num{font-size:26px;font-weight:700;color:var(--c)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.row.w{flex-wrap:wrap}
+.mu{color:var(--mu);font-size:14px}
+/* 学习内容不小于 15px（M2-3） */
+.ex{font-size:15px;color:var(--mu);line-height:1.5;margin-top:2px}
+.gloss{font-size:17px;line-height:1.5}
+.gloss .zh{color:var(--mu);font-size:15px;display:block;margin-top:1px}
+.w{padding:11px 0;border-bottom:1px solid #8882}
+.flash{text-align:center;min-height:250px;display:flex;flex-direction:column;justify-content:center;padding:16px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal div{padding:8px 0;border-radius:8px;font-size:14px}
+.cal .d{background:var(--c);color:#fff}
+.cal .p{background:#00843D33}
+.hide{display:none}
+progress{width:100%;height:10px;accent-color:var(--c)}
+.txt p{font-size:19px;line-height:1.75;margin:0 0 12px}
+.s{border-radius:4px;transition:background .2s;padding:1px 0}
+.s.hl{background:#00843D33}
+.lv{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;background:#00843D22;
+ color:var(--c);margin-right:6px}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;min-height:44px}
+.ok{color:var(--ok)}.ac{color:var(--warn);font-weight:600}.no{color:var(--bad);text-decoration:underline}
+details{padding:10px 0;border-bottom:1px solid #8882}
+summary{font-weight:600;min-height:32px;cursor:pointer}
+/* 假朋友标签（M6-5） */
+.ff{display:inline-block;font-size:13px;padding:2px 8px;border-radius:6px;background:var(--ffbg);
+ color:var(--ffb);margin-left:6px;vertical-align:middle;cursor:pointer}
+/* 下一步卡片（M5-3） */
+.next{background:var(--c);color:#fff;border-radius:14px;padding:18px;margin-bottom:14px}
+.next .t{font-size:19px;font-weight:600;line-height:1.4}
+.next .b{margin-top:12px;background:#fff;color:var(--c);font-weight:600}
+/* 周目标（M5-6） */
+.week{font-size:14px;color:var(--mu);text-align:right}
+.week b{color:var(--c);font-size:16px}
+.banner{background:#fde8e8;color:#a00;border-radius:10px;padding:12px;margin-bottom:12px;font-size:15px}
+@media (prefers-color-scheme:dark){.banner{background:#4a1f1f;color:#ffb3b3}}
+.warnc{background:var(--ffbg);color:var(--ffb);border-radius:10px;padding:12px;margin-bottom:12px;font-size:15px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom));
+ background:#000c;color:#fff;padding:10px 18px;border-radius:20px;font-size:15px;z-index:99;
+ pointer-events:none;opacity:0;transition:opacity .2s}
+.toast.on{opacity:1}
+.ttabs{display:flex;gap:6px;margin:10px 0}
+.ttabs button{flex:1;min-height:40px;font-size:15px}
+</style>
+</head>
+<body>
+<main>
+ <section id="today"></section>
+ <section id="read" class="hide"></section>
+ <section id="words" class="hide"></section>
+ <section id="review" class="hide"></section>
+ <section id="stats" class="hide"></section>
+</main>
+<nav>
+ <button data-t="today" onclick="show('today')">今日</button>
+ <button data-t="read" onclick="show('read')">阅读</button>
+ <button data-t="words" onclick="show('words')">单词</button>
+ <button data-t="review" onclick="show('review')">复习</button>
+ <button data-t="stats" onclick="show('stats')">统计</button>
+</nav>
+<div id="toast" class="toast"></div>
+<script src="logic.js"></script>
+<script>
+'use strict';
+const K = 'aptapp';   // 命名口径：不可改名
+const L = Logic;      // 纯函数层
+
+/* ---------- 数据与迁移 ---------- */
+let D = null;
+let saveWarned = false;
+
+function load() {
+  let raw = null;
+  try { raw = localStorage.getItem(K); } catch (e) {}
+  let d = null;
+  if (raw) { try { d = JSON.parse(raw); } catch (e) { d = null; } }
+  // 兼容早期版本的 ptapp 键（兜底分支，硬规则第 3 条）
+  if (!d) {
+    try {
+      const old = localStorage.getItem('ptapp');
+      if (old) { d = JSON.parse(old); }
+    } catch (e) {}
+  }
+  const m = L.migrate(d);
+  D = m || { words: [], logs: {}, lessons: {}, set: {}, del: [], seq: 0 };
+  // 未做过的赋值：默认值只在 migrate 里给，这里不覆盖
+  save();
+}
+
+/** save() 带失败捕获（M2-2）。写入失败必须明确提示，否则数据静默丢失。 */
+function save() {
+  try {
+    localStorage.setItem(K, JSON.stringify(D));
+    return true;
+  } catch (e) {
+    if (!saveWarned) {
+      saveWarned = true;
+      const b = document.createElement('div');
+      b.className = 'banner';
+      b.textContent = '数据保存失败！请立即导出备份，不要关闭页面。原因：' + (e && e.name ? e.name : '未知');
+      const m0 = document.querySelector('main');
+      if (m0) m0.insertBefore(b, m0.firstChild);
+    }
+    return false;
+  }
+}
+
+const $ = id => document.getElementById(id);
+const today = () => L.today();
+const log = (k) => {
+  const t = k || today();
+  if (!D.logs[t]) D.logs[t] = { read: [], newW: 0, rev: 0, done: false };
+  return D.logs[t];
+};
+const mins = l => l.read.reduce((a, r) => a + (+r.min || 0), 0);
+const has = pt => D.words.some(w => (w.pt || '').toLowerCase() === String(pt).toLowerCase());
+const byId = id => D.words.find(w => String(w.id) === String(id));
+const dueCount = () => L.due(D.words).length;
+const backlog = () => L.isBacklogged(D.words, 50);
+
+function esc(s) {
+  return (s == null ? '' : String(s)).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// 渲染 id 到 onclick：加引号并转义（M2-6）
+const jid = id => JSON.stringify(String(id));
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('on'), 900);
+}
+
+/* ---------- 发音引擎 ---------- */
+const A = new Audio();
+A.prefersReducedMotion = true;
+const BL = new Map();     // src -> objectURL
+let rate = 1;
+let gen = 0;              // 播放代号，避免竞态
+const spk = t => t.replace(/…/g, ' ').replace(/\s+/g, ' ').trim();
+
+document.addEventListener('touchend', () => {
+  if (A.src) return;
+  A.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  A.play().catch(() => {});
+}, { once: true });
+
+async function load1(src) {
+  if (BL.has(src)) return BL.get(src);
+  const r = await fetch(src);
+  if (!r.ok) throw new Error(r.status);
+  const u = URL.createObjectURL(await r.blob());
+  BL.set(src, u);
+  return u;
+}
+const preload = arr => (arr || []).forEach(s => { if (s) load1(s).catch(() => {}); });
+
+/** 系统语音兜底 */
+function speak(t, r, cb) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(L.say(t));
+    u.lang = D.set.voice;
+    u.rate = r;
+    if (cb) u.onend = cb;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+/**
+ * 播放：优先音频文件，失败退回系统语音。
+ * 句子与单词共用本函数；调用方决定传不传 src。
+ */
+async function play(src, text, cb, r) {
+  const rr = r || rate;
+  A.pause();
+  try { speechSynthesis.cancel(); } catch (e) {}
+  A.onended = null;
+  if (!src) { speak(text, .9 * rr, cb); return; }
+  try {
+    const u = BL.get(src) || await load1(src);
+    A.src = u;
+    A.defaultPlaybackRate = rr;
+    A.playbackRate = rr;
+    A.onended = cb || null;
+    await A.play();
+  } catch (e) {
+    if (e && e.name !== 'AbortError') speak(text, .9 * rr, cb);
+  }
+}
+function stopAll() {
+  gen++;
+  A.pause();
+  try { speechSynthesis.cancel(); } catch (e) {}
+  markHl(-1);
+}
+function markHl(i) {
+  document.querySelectorAll('.s').forEach(e => e.classList.toggle('hl', +e.dataset.i === i));
+}
+/* 单词发音：预生成音频 → 代理即时合成（POST）→ 系统语音。
+ * 三级降级见 docs/CONTRACT.md 8.1。任何一级失败都静默继续往下走。 */
+const TTS_URL = 'api/tts';
+const TTS_MEM = new Map();          // 文本 -> objectURL，避免同一词重复合成
+
+async function fetchTTS(text) {
+  if (TTS_MEM.has(text)) return TTS_MEM.get(text);
+  const res = await fetch(TTS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: text,
+  });
+  if (!res.ok) throw new Error('tts ' + res.status);
+  const u = URL.createObjectURL(await res.blob());
+  TTS_MEM.set(text, u);
+  return u;
+}
+
+function playWord(w) {
+  const text = spk(w.pt || '');
+  if (w.a) { play(w.a, w.pt); return; }
+  if (!text) { speak(w.pt, .9); return; }
+  // 代理合成是异步的：先尝试，失败自动退回系统语音
+  fetchTTS(text).then(u => play(u, w.pt)).catch(() => speak(w.pt, .9));
+}
+
+/* ---------- 课文数据 ---------- */
+let M = null;
+let curL = null;
+let mode = 'read';
+let si = 0;
+let showZh = false;
+let showTr = 'zh';        // 全文翻译当前语言
+let hideZh = new Set();   // 长按句子时显示中文的句子
+fetch('materials.json').then(r => r.json()).then(m => {
+  M = m;
+  if (tab === 'read') rRead();
+}).catch(() => {});
+const SS = () => curL.sents || (curL._s || (curL._s = L.splitS(curL.text)));
+
+/* ---------- 标签切换 ---------- */
+let tab = 'today';
+const R = { today: rToday, read: rRead, words: rWords, review: rReview, stats: rStats };
+function show(t) {
+  if (recOn) { try { rec.stop(); } catch (e) {} }
+  stopAll();
+  tab = t;
+  Object.keys(R).forEach(s => $(s).classList.toggle('hide', s !== t));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  R[t]();
+}
+const S_ = () => L.say;
+
+/* ================================================================
+ * 今日页
+ * ================================================================ */
+function rToday() {
+  const lg = log();
+  const m = mins(lg);
+  const nDue = dueCount();
+  const back = backlog();
+  const isNew = Object.keys(D.logs).length <= 1;
+  // 周目标（M5-6）
+  const wk = L.weekCount(D.logs);
+  const wkGoal = D.set.weekGoal;
+  // 备份提醒（M2-2）
+  const needExport = D.set.lastExport &&
+    (Date.now() - D.set.lastExport) / 86400000 > 7;
+
+  let h = '';
+
+  //备份提醒
+  if (needExport && !D._exportNag) {
+    h += `<div class="warnc">已经 ${Math.floor((Date.now() - D.set.lastExport) / 86400000)} 天没导出备份了。
+      建议每周导出一次，存到 iCloud。
+      <div style="margin-top:8px"><button class="sm" onclick="exportNow();D._exportNag=1;render()">立即导出</button>
+      <button class="sm g" onclick="D._exportNag=1;render()">今天不再提醒</button></div></div>`;
+  }
+
+  // 状态卡
+  h += `<div class="card row">
+    <div><div class="mu">${today()}</div><h2>Olá! Bom estudo!</h2>
+      <div class="week">本周 <b>${wk}/${wkGoal}</b></div></div>
+    <div style="text-align:center"><div class="big">${L.streak(D.logs)}</div>
+      <div class="mu">连续打卡(天)</div></div></div>`;
+
+  // 下一步卡片（M5-3）：三态固定顺序
+  let nx = '', nxBtn = '', nxAct = '';
+  if (nDue > 0) {
+    nx = back ? `今天有 ${nDue} 个词要复习，先清一清` : `今天有 ${nDue} 个词要复习`;
+    nxBtn = '开始复习'; nxAct = "show('review')";
+  } else if (back) {
+    nx = '待复习有点积压了，今天先复习'; nxBtn = '开始复习'; nxAct = "show('review')";
+  } else {
+    const un = (M && M.lessons || []).find(l => !D.lessons[l.id]);
+    if (un) { nx = '继续读：' + un.title; nxBtn = '继续阅读'; nxAct = `openL('${un.id}')`; }
+    else { nx = '今天完成了，明天见'; nxBtn = '去打卡'; nxAct = 'checkin()'; }
+  }
+  h += `<div class="next"><div class="t">${esc(nx)}</div>
+    <button class="b" onclick="${nxAct}">${nxBtn}</button></div>`;
+
+  // 积压提示
+  if (back) {
+    h += `<div class="warnc">待复习 ${nDue} 个，超过 50。这几天先不加新词，把复习清完。
+      复习一轮（${D.set.revBatch} 个）就能打卡。</div>`;
+  }
+
+  // 快速听写入口（M5-7）
+  if (hasRead()) {
+    h += `<div class="card"><div class="row"><h2>快速听写</h2>
+      <button class="sm" onclick="startQuickDict()">开始 5 句</button></div>
+      <p class="mu">从你读过的课文里随机抽 5 句，约 3 分钟。</p></div>`;
+  }
+
+  // 任务卡
+  const needNew = !back;
+  h += `<div class="card"><h2>今日任务</h2>
+    <div class="mu">阅读 ${m} / ${D.set.goalMin} 分钟</div>
+    <progress max="${D.set.goalMin}" value="${m}"></progress>
+    <div class="mu">新单词 ${lg.newW} / ${needNew ? D.set.goalW : 0}${needNew ? '' : '（积压，今天不加新词）'}</div>
+    <progress max="${D.set.goalW}" value="${Math.min(lg.newW, D.set.goalW)}"></progress>
+    <div class="mu">今日复习 ${lg.rev} 次 · 待复习 ${nDue} 个 · 跟读 ${lg.sh || 0} 句 · 听写 ${lg.dc || 0} 句</div>
+    <p>${lg.done ? '<b style="color:var(--c)">今日已打卡 ✓</b>' : '<button onclick="checkin()">完成今日打卡</button>'}</p>
+    </div>`;
+
+  // 阅读记录
+  h += `<div class="card"><h2>记录其他阅读</h2>
+    <input id="rt" placeholder="读了什么？（课本 / 新闻 / 小说）">
+    <input id="rm" type="number" inputmode="numeric" placeholder="分钟数">
+    <textarea id="rn" rows="3" placeholder="笔记、摘抄或一句话感想（试试用葡语写）"></textarea>
+    <button onclick="addRead()">保存</button>
+    ${lg.read.map(r => `<div class="w"><b>${esc(r.title)}</b>
+      <span class="mu">${esc(r.min)} 分钟</span><div class="ex">${esc(r.note)}</div></div>`).join('')}
+    </div>`;
+
+  $('today').innerHTML = h;
+}
+
+function render() { R[tab](); }
+
+function checkin() {
+  const lg = log();
+  const m = mins(lg);
+  const back = backlog();
+  // 积压时打卡条件改为「完成一轮复习」（M5-2）
+  const needReview = back;
+  const okGoal = back || (m >= D.set.goalMin && lg.newW >= D.set.goalW);
+  if (!okGoal && !confirm('还没达到今日目标，确定打卡吗？')) return;
+  lg.done = true;
+  lg.checkinAt = Date.now();
+  save();
+  rToday();
+}
+function addRead() {
+  const t = $('rt').value.trim();
+  const m = +$('rm').value;
+  if (!t || !m) return alert('请填写标题和分钟数');
+  log().read.push({ title: t, min: m, note: $('rn').value.trim() });
+  save();
+  rToday();
+}
+function exportNow() {
+  D.set.lastExport = Date.now();
+  doExport();
+}
+
+/* ================================================================
+ * 阅读页
+ * ================================================================ */
+function rRead() {
+  const el = $('read');
+  if (!M) {
+    el.innerHTML = '<div class="card mu">课文加载中…（第一次打开需要联网）</div>';
+    return;
+  }
+  if (!curL) {
+    el.innerHTML = `<div class="row" style="margin-bottom:12px">
+      <span class="mu">共 ${M.lessons.length} 课</span>
+      <button class="g sm" onclick="dlAll(this)">下载全部音频（离线用）</button></div>` +
+      M.lessons.map(l => {
+        const w = L.normWord(l.words[0]);
+        return `<div class="card" onclick="openL(${jid(l.id)})"><div class="row">
+        <div><span class="lv">${esc(l.level)}</span><b>${esc(l.title)}</b>
+          <div class="mu">${esc(l.zh)} · 约 ${l.min} 分钟</div></div>
+        <div class="num">${D.lessons[l.id] ? '✓' : ''}</div></div></div>`;
+      }).join('');
+    return;
+  }
+
+  const S = SS();
+  let h = `<div class="row" style="margin-bottom:10px">
+    <button class="g sm" onclick="stopAll();curL=null;rRead();scrollTo(0,0)">‹ 课文列表</button>
+    <button class="g sm" onclick="rate=rate===1?.75:1;rRead()">速度 ${rate === 1 ? '1x' : '0.75x'}</button>
+    <button class="g sm" onclick="dlOne(this)">缓存本课</button>
+  </div>
+  <div class="seg">${[['read', '阅读'], ['shadow', '跟读'], ['dict', '听写']]
+    .map(([k, n]) => `<button class="${mode === k ? '' : 'g'}" onclick="setMode('${k}')">${n}</button>`).join('')}</div>`;
+
+  h += mode === 'read' ? vRead(curL, S)
+     : mode === 'shadow' ? vShadow(S)
+     : vDict(S, null);
+  el.innerHTML = h;
+}
+
+/** 学习内容渲染：英文为主、中文在下（M6-2） */
+function glossHtml(w) {
+  const g = L.gloss(w, D.set.show);
+  let out = '';
+  if (g.en) out += `<div class="gloss">${esc(g.en)}</div>`;
+  if (g.zh) out += `<span class="gloss zh">${esc(g.zh)}</span>`;
+  return out || '<div class="mu">（无释义）</div>';
+}
+function ffHtml(w) {
+  const ff = (w && w.ff) || '';
+  if (!ff) return '';
+  return `<span class="ff" onclick="event.stopPropagation();alert('假朋友\\n\\n${esc(ff).replace(/\n/g, '\\n')}')">⚠ 假朋友</span>`;
+}
+
+function vRead(l, S) {
+  // 按段落分组
+  const P = [];
+  S.forEach((s, i) => (P[s.p] = P[s.p] || []).push(i));
+  const body = P.filter(Boolean).map(idxs => {
+    const sp = idxs.map(i => `<span class="s" data-i="${i}" onclick="playS(${i})"
+      oncontextmenu="event.preventDefault();toggleZh(${i})">${esc(S[i].t)}</span>`).join(' ');
+    const zh = idxs.filter(i => hideZh.has(i))
+      .map(i => `<div class="mu" style="margin:4px 0 4px 8px">${esc(S[i].zh || S[i].en || '')}</div>`).join('');
+    return `<p>${sp}${zh}</p>`;
+  }).join('');
+
+  const tr = L.normTrans(l.trans);
+  let trHtml = '';
+  if (tr.en || tr.zh) {
+    trHtml = `<div class="row" style="margin-top:10px">
+      ${(tr.en && tr.zh) ? `<div class="ttabs">
+        <button class="sm ${showTr === 'en' ? '' : 'g'}" onclick="showTr='en';rRead()">EN</button>
+        <button class="sm ${showTr === 'zh' ? '' : 'g'}" onclick="showTr='zh';rRead()">中</button>
+      </div>` : ''}</div>
+      <div style="line-height:1.8;font-size:15px;color:var(--mu)">${esc((showTr === 'en' ? tr.en : tr.zh) || tr.en || tr.zh).replace(/\n/g, '<br>')}</div>`;
+  }
+
+  return `<div class="card">
+    <span class="lv">${esc(l.level)}</span><h2>${esc(l.title)}</h2>
+    ${l.en ? `<div class="mu" style="margin-top:-8px">${esc(l.en)}</div>` : ''}
+    <div class="row w" style="justify-content:flex-start;margin-top:10px">
+      <button class="sm" onclick="playS(0,true)">▶ 朗读全文</button>
+      <button class="g sm" onclick="stopAll()">■ 停止</button></div>
+    <div class="txt" style="margin-top:14px">${body}</div>
+    <p class="mu">点句子单独听 · 长按句子看这句的中文</p>
+    ${trHtml}</div>
+
+  ${l.note ? `<div class="card"><h2>语法点</h2><div style="line-height:1.75;font-size:15px">${esc(l.note)}</div></div>` : ''}
+
+  <div class="card"><div class="row"><h2>生词</h2>
+    <button class="sm" onclick="addAllL()">全部加入单词本</button></div>
+    ${(l.words || []).map((w, i) => {
+      const nw = L.normWord(w);
+      return `<div class="w"><div class="row">
+        <b style="font-size:18px">${esc(nw.pt)}</b>${ffHtml(nw)}
+        <span><button class="g sm" onclick="event.stopPropagation();playWord({pt:'',a:curL.wa&&curL.wa[i]})">▶</button>
+        ${has(nw.pt) ? '<span class="mu">已加入</span>' : `<button class="sm" onclick="event.stopPropagation();addLW(${i})">＋</button>`}</span>
+      </div>${glossHtml(nw)}${nw.ex ? `<div class="ex">${esc(nw.ex)}</div>` : ''}</div>`;
+    }).join('')}</div>
+
+  <div class="card"><h2>理解问题</h2>
+    <p class="mu">先自己用葡语回答，再点开看参考答案</p>
+    ${(l.qs || []).map(q => `<details><summary>${esc(q[0])}</summary><p>${esc(q[1])}</p></details>`).join('')}</div>
+
+  <div class="card">${D.lessons[l.id] ? `<p class="mu">已于 ${D.lessons[l.id]} 读完 ✓</p>` : ''}
+    <div class="row">
+      <input id="lm" type="number" inputmode="numeric" value="${l.min}" style="width:90px;margin:0">
+      <span style="flex:1">分钟</span>
+      <button onclick="finishL()">读完了，记录</button></div></div>`;
+}
+
+function openL(id) {
+  curL = M.lessons.find(l => l.id === id);
+  if (!curL) return;
+  mode = 'read'; si = 0; showZh = false; hideZh = new Set();
+  Object.values(recs).forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+  recs = {};
+  preload(SS().map(s => s.a)); preload(curL.wa);
+  show('read');
+  scrollTo(0, 0);
+}
+function setMode(k) {
+  stopAll();
+  if (recOn) { try { rec.stop(); } catch (e) {} }
+  mode = k; si = 0; dRes = null; dAns = ''; dPool = null;
+  rRead();
+  scrollTo(0, 0);
+  if (k === 'dict') playS(0);
+}
+function toggleZh(i) {
+  if (hideZh.has(i)) hideZh.delete(i); else hideZh.add(i);
+  rRead();
+}
+function addLW(i) {
+  const nw = L.normWord(curL.words[i]);
+  addW(nw.pt, nw.zh, nw.ex, curL.wa && curL.wa[i], nw.en, nw.ff);
+  save(); rRead();
+}
+function addAllL() {
+  let n = 0;
+  (curL.words || []).forEach((w, i) => {
+    const nw = L.normWord(w);
+    n += addW(nw.pt, nw.zh, nw.ex, curL.wa && curL.wa[i], nw.en, nw.ff);
+  });
+  save(); rRead();
+  alert(`加入了 ${n} 个新词`);
+}
+function finishL() {
+  const m = +$('lm').value || curL.min;
+  log().read.push({ title: curL.title, min: m, note: 'App 课文' });
+  D.lessons[curL.id] = today();
+  save();
+  alert('已记入今日阅读');
+  rRead();
+}
+
+/* ---------- 逐句播放 ---------- */
+function playS(i, chain) {
+  const S = SS();
+  if (i >= S.length) { markHl(-1); return; }
+  const g = ++gen;
+  markHl(i);
+  // 0.75x 优先用预生成的慢速音频（若有），否则实时改速
+  let src = S[i].a;
+  if (rate < 1 && S[i].s) src = S[i].s;
+  play(src, L.say(S[i].t), () => {
+    if (g !== gen) return;
+    chain ? playS(i + 1, true) : markHl(-1);
+  });
+}
+
+/* ---------- 跟读 ---------- */
+let recs = {}, recOn = false, rec = null;
+const recKey = i => 'r' + curL.id + '_' + i;
+function vShadow(S) {
+  const s = S[si];
+  const key = recKey(si);
+  const me = recs[key];
+  const anyRec = Object.keys(recs).length > 0;
+  return `<div class="card flash">
+    <div class="mu">第 ${si + 1} / ${S.length} 句</div>
+    <div style="font-size:22px;line-height:1.6;margin:16px 0">${esc(s.t)}</div>
+    <div class="row" style="justify-content:center;flex-wrap:wrap">
+      <button class="g" onclick="playS(${si})">▶ 原音</button>
+      <button style="background:${recOn ? '#d33' : 'var(--c)'}" onclick="recToggle()">
+        ${recOn ? '■ 停止录音' : '● 跟读录音'}</button></div>
+    ${me ? `<div class="row" style="justify-content:center;margin-top:12px">
+      <button class="g" onclick="playMine()">▶ 我的</button>
+      <button class="g" onclick="compare()">原音 → 我的</button></div>` : ''}
+    ${!anyRec ? `<p class="mu">建议戴耳机。先听两三遍，再模仿语调和节奏录一遍。</p>` : ''}
+  </div>
+  <div class="row">
+    <button class="g" style="flex:1" onclick="go(-1)">‹ 上一句</button>
+    <button class="g" style="flex:1" onclick="go(1)">${si < S.length - 1 ? '下一句 ›' : '完成 ✓'}</button></div>`;
+}
+async function recToggle() {
+  if (recOn) { try { rec.stop(); } catch (e) {} return; }
+  stopAll();
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const type = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+    const chunks = [];
+    const key = recKey(si);
+    rec = new MediaRecorder(st, { mimeType: type });
+    rec.ondataavailable = e => chunks.push(e.data);
+    rec.onstop = () => {
+      st.getTracks().forEach(t => t.stop());
+      recOn = false;
+      if (recs[key]) { try { URL.revokeObjectURL(recs[key]); } catch (e) {} }
+      recs[key] = URL.createObjectURL(new Blob(chunks, { type }));
+      const lg = log(); lg.sh = (lg.sh || 0) + 1;
+      save(); rRead();
+    };
+    rec.start();
+    recOn = true;
+    rRead();
+  } catch (e) {
+    alert('需要麦克风权限：在弹窗中点"允许"，或到 设置 → Safari → 麦克风 里打开');
+  }
+}
+function playMine(cb) {
+  const u = recs[recKey(si)];
+  if (!u) return;
+  gen++;
+  A.pause();
+  try { speechSynthesis.cancel(); } catch (e) {}
+  A.onended = cb || null;
+  A.src = u; A.defaultPlaybackRate = 1; A.playbackRate = 1;
+  A.play().catch(() => {});
+}
+function compare() {
+  const S = SS();
+  const s = S[si];
+  const g = ++gen;
+  play(s.a, L.say(s.t), () => {
+    if (g === gen) setTimeout(() => { if (g === gen) playMine(); }, 300);
+  });
+}
+function go(d) {
+  stopAll();
+  const n = SS().length;
+  if (si + d >= n) {
+    alert('这一课练完了，Muito bem!');
+    return setMode('read');
+  }
+  si = Math.max(0, si + d);
+  dRes = null; dAns = '';
+  rRead();
+  if (mode === 'dict') playS(si);
+}
+
+/* ---------- 听写 ---------- */
+let dRes = null, dAns = '', dPool = null, dIdx = [];
+function vDict(S, pool) {
+  const src = pool || { list: SS().map((_, i) => i) };
+  if (!dPool) { dPool = src; dIdx = src.list.slice(); shuffle(dIdx); }
+  if (dIdx.length === 0) {
+    return `<div class="card flash"><h2>今天的听写完成了</h2>
+      <p class="mu">Muito bem! 明天再来～</p>
+      <div><button class="g" onclick="exitQuickDict()">回到今日</button></div></div>`;
+  }
+  const i = dIdx[0];
+  const s = S[i];
+  return `<div class="card">
+    <div class="row"><span class="mu">剩余 ${dIdx.length} 句</span>
+      <button class="g sm" onclick="playS(${i})">▶ 再听一遍</button>
+      <button class="g sm" onclick="stopAll();dPool=null;dIdx=[];exitQuickDict()">退出</button></div>
+    <textarea id="dt" rows="3" placeholder="听到什么就写什么，注意重音符号"
+      autocapitalize="off" autocorrect="off" spellcheck="false">${esc(dAns)}</textarea>
+    ${dRes ? `<div style="font-size:19px;line-height:1.8">${cmpHtml(dRes)}</div>
+      <p class="mu">写对 ${dRes.ok} / ${dRes.m} 个词 · 绿=对 · 橙=重音符号错 · 红=漏写或写错</p>
+      ${dRes.bad.length ? `<div class="mu">本句用到：${dRes.bad.map(b => esc(b)).join('、')}</div>` : ''}
+      <button onclick="dictNext()">下一句 ›</button>`
+      : `<button onclick="checkDict()">检查</button>`}</div>`;
+}
+function cmpHtml(r) {
+  return r.parts.map(p => `<span class="${p.cls}">${esc(p.w)}</span>`).join(' ');
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function checkDict() {
+  const S = SS();
+  const i = dIdx[0];
+  dAns = $('dt').value;
+  const ref = L.say(S[i].t);
+  const r = L.cmpW(dAns, ref);
+  // 听写判错：单词本里有的词记lapse（M6/M5-5）
+  const bad = [];
+  r.parts.forEach(p => {
+    if (p.cls !== 'ok') {
+      const w = D.words.find(x => L.base((x.pt || '').toLowerCase()) === L.base(p.w.toLowerCase()));
+      if (w) { w.lapse = (w.lapse | 0) + 1; w.upd = Date.now(); bad.push(w.pt); }
+    }
+  });
+  r.bad = bad;
+  dRes = r;
+  const lg = log(); lg.dc = (lg.dc || 0) + 1;
+  save();
+  rRead();
+}
+function dictNext() {
+  if (dIdx.length) dIdx.shift();
+  dRes = null; dAns = '';
+  if (dIdx.length) playS(dIdx[0]);
+  rRead();
+}
+function exitQuickDict() {
+  dPool = null; dIdx = [];
+  if (curL && mode === 'dict' && dPool === null) {
+    // 从课文听写退出：回到阅读
+    mode = 'read';
+  }
+  show('today');
+}
+function hasRead() {
+  return !!(M && Object.keys(D.lessons || {}).length);
+}
+function startQuickDict() {
+  if (!M) return;
+  const pool = [];
+  M.lessons.forEach(l => {
+    if (!D.lessons[l.id]) return;
+    (l.sents || []).forEach((s, i) => {
+      if (s.a) pool.push({ lid: l.id, i: i });
+    });
+  });
+  if (!pool.length) { alert('还没有可听的课文音频，先去读一篇吧'); return; }
+  shuffle(pool);
+  dPool = pool.slice(0, 5);
+  dIdx = dPool.map((_, k) => k);
+  // 用课文内句子：切到 quick 模式，SS 换成全池
+  quickPool = dPool;
+  mode = 'dict';
+  show('review');
+  alert('快速听写：从读过的课文里抽 5 句');
+}
+
+/* ================================================================
+ * 单词页
+ * ================================================================ */
+let wFilter = 'all';   // all | hard
+function rWords() {
+  let h = `<div class="card"><h2>添加单词</h2>
+    <input id="wp" placeholder="葡语，如 saudade" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="row" style="gap:8px">
+      <input id="wen" placeholder="英文释义" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input id="wzh" placeholder="中文释义">
+    </div>
+    <textarea id="we" rows="2" placeholder="例句（可选）"></textarea>
+    <button onclick="addWord()">添加</button>
+    <details><summary>批量导入（课本词表）</summary>
+      <p class="mu">支持：<code>葡语 | 释义</code>（含汉字归中文，否则归英文）、
+        <code>葡语 | 英文 | 中文</code>、<code>葡语 | 英文 | 中文 | 例句</code></p>
+      <textarea id="bk" rows="6" placeholder="a casa | 房子&#10;a livraria | bookshop | 书店&#10;o livro | book | 书 | Leio um livro."></textarea>
+      <button onclick="bulk()">导入</button></details></div>`;
+
+  h += `<div class="card">
+    <div class="row" style="margin-bottom:8px">
+      <input id="wq" placeholder="搜索葡语 / 英文 / 中文（共 ${D.words.length} 个词）"
+        oninput="listWords()" style="margin:0">
+    </div>
+    <div class="seg">
+      <button class="sm ${wFilter === 'all' ? '' : 'g'}" onclick="wFilter='all';listWords()">全部</button>
+      <button class="sm ${wFilter === 'hard' ? '' : 'g'}" onclick="wFilter='hard';listWords()">
+        总记不住的词</button></div>
+    <div id="wl"></div></div>`;
+  $('words').innerHTML = h;
+  listWords();
+}
+function listWords() {
+  const box = $('wq');
+  const q = (box && typeof box.value === 'string' ? box.value : '').trim();
+  let arr = D.words.slice().reverse();
+  if (wFilter === 'hard') {
+    arr = arr.filter(w => (w.lapse | 0) >= 3).sort((a, b) => (b.lapse | 0) - (a.lapse | 0));
+  } else {
+    arr = arr.filter(w => L.matchWord(w, q));
+  }
+  const wl = $('wl');
+  if (!wl) return;
+  if (wFilter === 'hard' && !arr.length) {
+    wl.innerHTML = '<p class="mu">还没有反复记不住的词。连续点 3 次「没记住」就会出现在这里。</p>';
+    return;
+  }
+  if (!arr.length) { wl.innerHTML = '<p class="mu">没有匹配的词。</p>'; return; }
+  wl.innerHTML = arr.map(w => {
+    const nw = L.normWord(w);
+    return `<div class="w">
+      <div class="row"><b style="font-size:18px">${esc(nw.pt)}</b>${ffHtml(nw)}
+        <span>
+          ${(w.lapse | 0) >= 3 ? `<span class="mu">忘 ${w.lapse} 次</span>` : ''}
+          <button class="g sm" onclick="playWord(byId(${jid(w.id)})||{})">▶</button>
+          <button class="g sm" onclick="delWord(${jid(w.id)})">删</button></span></div>
+      ${glossHtml(nw)}
+      ${nw.ex ? `<div class="ex">${esc(nw.ex)}</div>` : ''}
+      <div class="mu">熟练度 ${w.box | 0}/6 · 下次复习 ${esc(w.due || '-')}</div></div>`;
+  }).join('');
+}
+function addWord() {
+  const pt = $('wp').value.trim();
+  const en = $('wen').value.trim();
+  const zh = $('wzh').value.trim();
+  const ex = $('we').value.trim();
+  if (!pt) return alert('请填写葡语');
+  if (!en && !zh) return alert('英文或中文释义至少填一栏');
+  if (!addW(pt, zh, ex, '', en, '')) return alert('单词本里已经有这个词了');
+  save(); rWords(); $('wp').focus();
+}
+function bulk() {
+  const lines = $('bk').value.split('\n');
+  let n = 0;
+  for (const line of lines) {
+    const o = L.parseImportLine(line);
+    if (!o) continue;
+    n += addW(o.pt, o.zh, o.ex, '', o.en, '');
+  }
+  save(); rWords();
+  alert(`导入了 ${n} 个新词（重复或格式不对的已跳过）`);
+}
+function delWord(id) {
+  if (!confirm('删除这个词？')) return;
+  D.words = D.words.filter(w => String(w.id) !== String(id));
+  D.del = D.del || [];
+  D.del.push({ id: String(id), t: Date.now() });
+  save(); listWords();
+}
+function addW(pt, zh, ex, a, en, ff) {
+  pt = (pt || '').trim();
+  if (!pt || has(pt)) return 0;
+  D.seq = D.seq || 0;
+  // 字符串型 id，避免两台设备自增撞号（CONTRACT 18.1）
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  D.words.push({
+    id: id, pt: pt,
+    en: (en || '').trim(), zh: (zh || '').trim(),
+    ex: (ex || '').trim(), ff: (ff || '').trim(),
+    a: a || '', box: 0, lapse: 0,
+    due: today(), added: today(), upd: Date.now(),
+  });
+  const lg = log(); lg.newW = (lg.newW | 0) + 1;
+  return 1;
+}
+
+/* ================================================================
+ * 复习页（M5：每轮上限、即时反馈、小结）
+ * ================================================================ */
+let Q = [], cur = null, shown = false, batchDone = 0, batchOk = 0, batchTotal = 0;
+
+function rReview() {
+  if (curL && mode === 'dict' && dPool) { $('review').innerHTML = vDict(SS(), dPool); return; }
+  if (!cur) {
+    $('review').innerHTML = `<div class="card flash"><h2>今天的复习完成啦</h2>
+      <p class="mu">Muito bem! 明天再来～</p></div>`;
+    return;
+  }
+  const nDue = dueCount();
+  $('review').innerHTML = `<div class="mu" style="text-align:center;margin-bottom:8px">
+      本轮 ${batchOk}/${batchTotal} 记住 · 剩余 ${Q.length + 1} 个待复习</div>
+    <div class="card flash" onclick="shown=true;card()">
+      <div class="big" style="color:var(--t)">${esc(cur.pt)}</div>
+      ${(cur.ff || '') ? `<div style="margin-top:6px"><span class="ff">⚠ 假朋友</span></div>` : ''}
+      <p><button class="g" onclick="event.stopPropagation();playWord(cur)">▶ 发音</button></p>
+      ${shown ? glossHtml(cur) + (cur.ex ? `<div class="ex">${esc(cur.ex)}</div>` : '')
+        + ((cur.ff || '') ? `<div class="warnc" style="margin-top:10px">⚠ 假朋友：${esc(cur.ff)}</div>` : '')
+        : '<div class="mu">先回想意思，再点卡片查看</div>'}</div>
+    ${shown ? `<div class="row">
+      <button style="flex:1;background:#d33" onclick="ans(0)">没记住</button>
+      <button style="flex:1" onclick="ans(1)">记住了</button></div>` : ''}`;
+}
+function card() { rReview(); }
+
+function startRound() {
+  const batch = L.takeBatch(D.words, D.set.revBatch);
+  if (!batch.length) { cur = null; rReview(); return; }
+  Q = batch.slice().sort(() => Math.random() - .5);
+  batchTotal = batch.length; batchOk = 0;
+  next();
+}
+function next() {
+  cur = Q.shift();
+  shown = false;
+  if (!cur) { roundEnd(); return; }
+  rReview();
+}
+function roundEnd() {
+  const more = L.due(D.words).length;
+  const L_ = log();
+  L_.rev = (L_.rev | 0) + batchTotal;
+  save();
+  cur = null;
+  $('review').innerHTML = `<div class="card flash">
+    <h2>这一轮完成了</h2>
+    <p class="mu">本轮 ${batchTotal} 个 · 记住 ${batchOk} 个 · 待巩固 ${batchTotal - batchOk} 个</p>
+    ${more > 0 ? `<p class="mu">还剩 ${more} 个待复习</p>
+      <div class="row" style="justify-content:center">
+        <button class="sm" onclick="startRound()">再来一组</button>
+        <button class="sm g" onclick="show('today')">今天到此为止</button></div>`
+      : `<p style="color:var(--c)"><b>今天的复习全部清空了，Muito bem!</b></p>
+        <div class="row" style="justify-content:center">
+          <button class="sm" onclick="show('today')">回到今日</button></div>`}</div>`;
+}
+function ans(ok) {
+  const lg = log();
+  const r = L.schedule(cur, !!ok, new Date());
+  cur.box = r.box;
+  cur.due = r.due;
+  cur.lapse = r.lapse;        // 只增不减
+  cur.upd = Date.now();
+  batchTotal = batchTotal;
+  if (ok) {
+    batchOk++;
+    // 即时反馈：间隔可见（M5-4）
+    const days = L.INT[r.box];
+    toast(days === 0 ? '今天再练一次' : `下次：${days} 天后`);
+  } else {
+    // 没记住：box 归零 + 放回队尾，该词当轮必然再现（现有行为，勿改）
+    cur.due = today();
+    Q.push(cur);
+    toast('再练一次');
+  }
+  lg.rev = (lg.rev | 0) + 1;
+  save();
+  next();
+}
+
+/* ================================================================
+ * 统计与设置
+ * ================================================================ */
+function rStats() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const first = new Date(y, m, 1).getDay();
+  const dim = new Date(y, m + 1, 0).getDate();
+  let cells = '日一二三四五六'.split('').map(c => `<div class="mu">${c}</div>`).join('')
+    + '<div></div>'.repeat(first);
+  for (let i = 1; i <= dim; i++) {
+    const lg = D.logs[L.day(new Date(y, m, i))];
+    cells += `<div class="${lg && lg.done ? 'd' : (lg && (lg.read.length || lg.newW || lg.rev)) ? 'p' : ''}">${i}</div>`;
+  }
+  const logs = Object.values(D.logs);
+  const totMin = logs.reduce((a, l) => a + mins(l), 0);
+  const mastered = D.words.filter(w => (w.box | 0) >= L.MASTERED_BOX).length;
+  const hard = D.words.filter(w => (w.lapse | 0) >= 3).length;
+
+  $('stats').innerHTML = `<div class="card"><h2>${y} 年 ${m + 1} 月</h2>
+    <div class="cal">${cells}</div>
+    <p class="mu">深绿 = 已打卡，浅绿 = 有学习但未打卡</p></div>
+
+  <div class="card row" style="text-align:center">
+    <div><div class="num">${logs.filter(l => l.done).length}</div><div class="mu">打卡天数</div></div>
+    <div><div class="num">${Object.keys(D.lessons).length}</div><div class="mu">课文</div></div>
+    <div><div class="num">${D.words.length}</div><div class="mu">单词</div></div>
+    <div><div class="num">${mastered}</div><div class="mu">已掌握</div></div>
+    <div><div class="num">${totMin}</div><div class="mu">阅读分钟</div></div></div>
+
+  ${hard ? `<div class="warnc">有 ${hard} 个词反复记不住（忘 3 次以上）。
+    去单词页点「总记不住的词」专门练。</div>` : ''}
+
+  <div class="card"><h2>设置</h2>
+    <label>释义显示</label>
+    <select onchange="setShow(this.value)">
+      <option value="both"${D.set.show === 'both' ? ' selected' : ''}>英文为主+ 中文（可点开）</option>
+      <option value="en"${D.set.show === 'en' ? ' selected' : ''}>只显示英文</option>
+      <option value="zh"${D.set.show === 'zh' ? ' selected' : ''}>只显示中文</option>
+    </select>
+    <label>备用发音（无音频时用系统语音）</label>
+    <select id="sv" onchange="D.set.voice=this.value;save()">
+      <option value="pt-PT">欧洲葡语 pt-PT</option>
+      <option value="pt-BR">巴西葡语 pt-BR</option></select>
+    <label>每日新词目标</label>
+    <input type="number" value="${D.set.goalW}" onchange="D.set.goalW=+this.value||5;save()">
+    <label>每日阅读目标（分钟）</label>
+    <input type="number" value="${D.set.goalMin}" onchange="D.set.goalMin=+this.value||15;save()">
+    <label>每轮复习上限</label>
+    <input type="number" value="${D.set.revBatch}" onchange="D.set.revBatch=+this.value||30;save()">
+    <label>每周达标天数</label>
+    <input type="number" value="${D.set.weekGoal}" onchange="D.set.weekGoal=+this.value||5;save()">
+    <div class="row" style="margin-top:10px">
+      <button onclick="doExport()">导出备份</button>
+      <label class="btn g">导入备份<input type="file" accept=".json,application/json" hidden onchange="imp(this)"></label></div>
+    <p class="mu" style="margin-top:10px">上次导出：${D.set.lastExport
+      ? new Date(D.set.lastExport).toLocaleDateString('zh-CN') : '从未'}</p>
+  </div>
+
+  <div class="card"><h2>关于</h2>
+    <p class="mu">发音使用 Azure pt-PT 神经语音（欧葡）。若系统语音未安装葡语声音包，
+      请到 设置 → 辅助功能 → 朗读内容 → 声音 → 葡萄牙语 下载增强语音。</p></div>`;
+  const sv = $('sv'); if (sv) sv.value = D.set.voice;
+}
+function setShow(v) { D.set.show = v; save(); rStats(); }
+
+function doExport() {
+  D.set.lastExport = Date.now();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(D)], { type: 'application/json' }));
+  a.download = `apt-backup-${today()}.json`;
+  a.click();
+  save();
+}
+function imp(el) {
+  const f = el.files[0];
+  if (!f) return;
+  f.text().then(t => {
+    let o = null;
+    try { o = JSON.parse(t); } catch (e) { o = null; }
+    if (!o || !o.words || !o.logs) { alert('文件格式不对'); return; }
+    if (!confirm('导入会覆盖当前数据，确定吗？')) return;
+    localStorage.setItem(K, JSON.stringify(L.migrate(o)));
+    location.reload();
+  }).catch(() => alert('文件格式不对'));
+}
+
+/* ---------- 离线预下载 ---------- */
+async function dlOne(btn) {
+  const list = [];
+  SS().forEach(s => { if (s.a) list.push(s.a); if (s.s) list.push(s.s); });
+  (curL.wa || []).forEach(a => { if (a) list.push(a); });
+  btn.disabled = true;
+  let n = 0;
+  for (const s of list) { try { await fetch(s); n++; } catch (e) {} }
+  btn.textContent = `已缓存 ${n}/${list.length}`;
+}
+async function dlAll(btn) {
+  const list = [];
+  (M.lessons || []).forEach(l => {
+    (l.sents || []).forEach(s => { if (s.a) list.push(s.a); if (s.s) list.push(s.s); });
+    (l.wa || []).forEach(a => { if (a) list.push(a); });
+  });
+  btn.disabled = true;
+  let n = 0;
+  for (const s of list) {
+    try { await fetch(s); n++; } catch (e) {}
+    if (n % 10 === 0) btn.textContent = `下载中 ${n}/${list.length}`;
+  }
+  btn.textContent = `已下载 ${n}/${list.length}`;
+}
+
+/* ---------- 启动 ---------- */
+let quickPool = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (recOn) return;
+  if (mode === 'dict' && curL) return;   // 练习中不打断
+  try { if (!tab) return; R[tab](); } catch (e) {}
+});
+
+// 系统语音检查（M2-5）
+function checkVoices() {
+  let vs = [];
+  try { vs = speechSynthesis.getVoices() || []; } catch (e) { return; }
+  if (!vs.length) {
+    try { speechSynthesis.addEventListener('voiceschanged', checkVoices, { once: true }); } catch (e) {}
+    return;
+  }
+  const hasPt = vs.some(v => /^pt[-_]/i.test(v.lang || ''));
+  if (!hasPt && !D._voiceNag) {
+    D._voiceNag = 1; save();
+    setTimeout(() => {
+      alert('系统里没有葡语语音包，发音质量会差很多。\\n\\n' +
+        '设置 → 辅助功能 → 朗读内容 → 声音 → 葡萄牙语 → 下载「增强」或「高级」语音。\\n\\n' +
+        '（App 自带的课文音频不受影响，只有备用系统语音需要它。）');
+    }, 800);
+  }
+}
+
+load();
+if (navigator.storage && navigator.storage.persist) {
+  try { navigator.storage.persist(); } catch (e) {}
+}
+startRound();          // 预热：进入复习页时队列已就绪
+show('today');
+setTimeout(checkVoices, 1200);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
