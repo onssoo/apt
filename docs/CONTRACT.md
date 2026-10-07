@@ -766,7 +766,7 @@ VPS 上已有服务，本项目不得干扰：
 | Caddy 配置真源 | Gitea `yourname/lababa` 仓库 `deploy/Caddyfile`（线上快照） | 实测拉取 |
 | 已有域名 | `example.com`、`www.example.com`（根域已被 lababa 占用） | `docs/domains.md` |
 | DNS 泛解析 | `@` / `www` / `*` 三条 A 均 → `203.0.113.10`，TTL 600 | `docs/domains.md` |
-| SSH | `ssh -p 2222 -i credentials/keys/tencent-vps/remotessh.pem ubuntu@203.0.113.10`（公网 2222 首选）；走 tailnet 用 `ubuntu@100.64.0.3` | `machines/tencent-vps.md` |
+| SSH | `ssh -p 2222 -i~/.ssh/your-vps-key.pem ubuntu@203.0.113.10`（公网 2222 首选）；走 tailnet 用 `ubuntu@100.64.0.3` | `machines/tencent-vps.md` |
 | 安全 | **低信任主机**，按机队规矩不持有任何机队凭据 | `rules/owner-rules.md` 信任边界 |
 
 **三个必须注意的差异（与原文档 v1.0 的偏差）**：

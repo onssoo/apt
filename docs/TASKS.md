@@ -223,7 +223,7 @@ tools/.qa_cache/
 ## 5. 开工前需要家长提供
 
 1. **VPS 登录方式**（已核定，无需提供）：`ssh -p 2222 -i ~/~/.ssh/your-vps-key.pem ubuntu@203.0.113.10`，或走 tailnet `ubuntu@100.64.0.3`。⚠️ 公网 22 会被云镜封，必须走 2222。
-2. **Mac mini M2 的SSH**（已核定，无需提供）：`ssh -i ~/router/~/.ssh/your-mac-mini-key dail@100.64.0.2`。
+2. **Mac mini M2 的SSH**（已核定，无需提供）：`ssh -i ~/.ssh/your-mac-mini-key yourname@100.64.0.2`。
 3. Azure 资源所在的 region（密钥由家长自己写进 M2 的 `.env` 和 VPS 的 `/etc/apt-tts.env`，不要发给 coder）；
 4. **学生是否已经在使用旧版。如果已经在用，先请她导出一份备份**，作为 M2-1 的迁移测试样本。这份备份既是测试样本，也是出问题时的退路；
 5. 学生能参与 M1-3 盲听的时间。
